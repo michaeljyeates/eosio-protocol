@@ -109,10 +109,6 @@ function debug_message(array){
     const msg_types = abi.variants[0].types;
     const type_name = msg_types[type];
 
-    if (type !== 0){ // debugging handshakes only
-        return;
-    }
-
 
     console.log(`LENGTH: ${len}, TYPE : ${type_name} (${type})`);
     if (len <= 0){
