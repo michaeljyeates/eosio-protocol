@@ -14,12 +14,56 @@ const PORT = 9862;
 const API = 'https://jungle.eosdac.io';
 // const HOST = 'eu.eosdac.io';
 // const PORT = 49876;
-// const API = 'https://eu.eosdac.io';
+// const API = 'https://api.eossweden.org';
 
+let current_buffer = new Uint8Array();
+let current_length = 0;
+
+function concatenate(...arrays) {
+    let totalLength = 0;
+    for (let arr of arrays) {
+        totalLength += arr.length;
+    }
+    let result = new Uint8Array(totalLength);
+    let offset = 0;
+    for (let arr of arrays) {
+        result.set(arr, offset);
+        offset += arr.length;
+    }
+    return result;
+}
 
 function client_data(data){
-    console.log(`Got data`, data);
-    debug_message(data);
+    // console.log(`Got data`, data);
+    // Make sure large chunks are recombined
+    if (!current_buffer.length){
+        // read length of message
+        current_length = 4;
+        for (let i=0;i<4;i++){
+            current_length |= data[i] << (i * 8);
+        }
+    }
+
+
+    if (current_buffer.length < current_length){
+        current_buffer = concatenate(current_buffer, data);
+    }
+
+    if (current_buffer.length >= current_length){
+        client_end();
+    }
+    else {
+        console.log(`Packet stats current : ${current_length}, this : ${current_buffer.length}`);
+        console.log(`BIG DATA`);
+        // process.exit(0);
+    }
+}
+
+function client_end(){
+    // console.log(`Client End`); //, current_buffer);
+    debug_message(current_buffer);
+    current_buffer = new Uint8Array();
+    current_length = 0;
 }
 
 async function connect(){
@@ -29,6 +73,7 @@ async function connect(){
             console.log('Connected to p2p');
 
             client.on('data', client_data);
+            client.on('end', client_end);
 
             resolve(client);
         });
@@ -38,6 +83,10 @@ async function connect(){
 
 
 function debug_message(array){
+    if (!array.length){
+        return;
+    }
+
     const sb = new Serialize.SerialBuffer({
         textEncoder: new TextEncoder,
         textDecoder: new TextDecoder,
@@ -90,7 +139,7 @@ async function send_handshake(client){
     send lib and head block which are in the past, cannot deserialize the message
      */
     const msg = {
-      "network_version": 1207,
+      "network_version": 1000,//1207,
       "chain_id": info.chain_id,
       "node_id": 'A6F45B421C2A64662E86456C258750290844CA41893F00A4DEF557BDAF20FFBD',
       "key": 'PUB_K1_11111111111111111111111111111111149Mr2R',
