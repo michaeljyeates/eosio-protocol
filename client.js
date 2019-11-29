@@ -9,11 +9,14 @@ const {abi, types} = require('./net-protocol');
 // const HOST = '127.0.0.1';
 // const PORT = 9877;
 // const API = 'http://127.0.0.1:8888';
-const HOST = 'jungle2.eosdac.io';
-const PORT = 9862;
-const API = 'https://jungle.eosdac.io';
-// const HOST = 'eu.eosdac.io';
-// const PORT = 49876;
+// const HOST = 'jungle2.eosdac.io';
+// const PORT = 9862;
+// const API = 'https://jungle.eosdac.io';
+const HOST = '145.239.150.200';
+const PORT = 9876;
+const API = 'https://eu.eosdac.io';
+// const HOST = 'p2p.eossweden.org';
+// const PORT = 9876;
 // const API = 'https://api.eossweden.org';
 
 let current_buffer = new Uint8Array();
@@ -41,6 +44,11 @@ function client_data(data){
         current_length = 4;
         for (let i=0;i<4;i++){
             current_length |= data[i] << (i * 8);
+        }
+
+        if (current_length > 2048000){
+            console.log(`ERROR : Length too long`);
+            return;
         }
     }
 
@@ -139,7 +147,7 @@ async function send_handshake(client){
     send lib and head block which are in the past, cannot deserialize the message
      */
     const msg = {
-      "network_version": 1000,//1207,
+      "network_version": 1207,
       "chain_id": info.chain_id,
       "node_id": 'A6F45B421C2A64662E86456C258750290844CA41893F00A4DEF557BDAF20FFBD',
       "key": 'PUB_K1_11111111111111111111111111111111149Mr2R',
