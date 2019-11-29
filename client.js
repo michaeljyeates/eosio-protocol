@@ -62,7 +62,7 @@ function client_data(data){
     if (current_buffer.length >= current_length){
         client_end();
     }
-    else {
+    else if (msg_type == 0) {
         console.log(`Packet stats current : ${current_length}, this : ${current_buffer.length}, msg_type : ${msg_type}`);
         // console.log(`BIG DATA`);
         // process.exit(0);
@@ -109,6 +109,10 @@ function debug_message(array){
     const msg_types = abi.variants[0].types;
     const type_name = msg_types[type];
 
+    if (type !== 0){ // debugging handshakes only
+        return;
+    }
+
 
     console.log(`LENGTH: ${len}, TYPE : ${type_name} (${type})`);
     if (len <= 0){
@@ -116,7 +120,7 @@ function debug_message(array){
         return;
     }
 
-    if (typeof type_name !== 'undefined' && type === 0){
+    if (typeof type_name !== 'undefined'){
         try {
             console.log(types.get(type_name).deserialize(sb));
         }
@@ -191,7 +195,7 @@ async function send_handshake(client){
         textDecoder: new TextDecoder
     });
     lenbuf.pushUint32(len + 1);
-    lenbuf.push(0);
+    lenbuf.push(0); // handshake message type
 
     const buf = Buffer.concat([Buffer.from(lenbuf.asUint8Array()), Buffer.from(sb.asUint8Array())]);
 
