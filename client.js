@@ -21,7 +21,6 @@ const API = 'https://eu.eosdac.io';
 
 let current_buffer = new Uint8Array();
 let current_length = 0;
-let msg_type = -1;
 
 function concatenate(...arrays) {
     let totalLength = 0;
@@ -38,43 +37,24 @@ function concatenate(...arrays) {
 }
 
 function client_data(data){
-    // console.log(`Got data`, data);
-    // Make sure large chunks are recombined
-    if (!current_buffer.length){
-        // read length of message
-        current_length = 4;
-        for (let i=0;i<4;i++){
-            current_length |= data[i] << (i * 8);
-        }
-        msg_type = data[4];
-
-        if (current_length > 2048000){
-            console.log(`ERROR : Length too long ${current_length}`);
-            return;
-        }
-    }
-
-
-    if (current_buffer.length < current_length){
-        current_buffer = concatenate(current_buffer, data);
-    }
-
-    if (current_buffer.length >= current_length){
-        client_end();
-    }
-    else if (msg_type == 0) {
-        console.log(`Packet stats current : ${current_length}, this : ${current_buffer.length}, msg_type : ${msg_type}`);
-        // console.log(`BIG DATA`);
-        // process.exit(0);
-    }
+    // put everything on a queue buffer and then process that according to the protocol
+    current_buffer = concatenate(current_buffer, data);
 }
 
-function client_end(){
-    // console.log(`Client End`); //, current_buffer);
-    debug_message(current_buffer);
-    current_buffer = new Uint8Array();
+function process_queue(){
+    // read length of the first message
     current_length = 0;
-    msg_type = -1;
+    for (let i=0;i<4;i++){
+        current_length |= current_buffer[i] << (i * 8);
+    }
+    current_length += 4;
+
+    if (current_length <= current_buffer.length){
+        console.log(`Read queue ${current_length} from buffer ${current_buffer.length}`);
+
+        debug_message(current_buffer.slice(0, current_length));
+        current_buffer = current_buffer.slice(current_length);
+    }
 }
 
 async function connect(){
@@ -84,7 +64,6 @@ async function connect(){
             console.log('Connected to p2p');
 
             client.on('data', client_data);
-            client.on('end', client_end);
 
             resolve(client);
         });
@@ -108,6 +87,9 @@ function debug_message(array){
     const type = sb.get();
     const msg_types = abi.variants[0].types;
     const type_name = msg_types[type];
+    if (type !== 0){
+        // return;
+    }
 
 
     console.log(`LENGTH: ${len}, TYPE : ${type_name} (${type})`);
@@ -205,3 +187,5 @@ connect().then((client) => {
     // if you do not send the handshake then the server will respond with time_message anyway
     send_handshake(client);
 });
+
+setInterval(process_queue, 10);
