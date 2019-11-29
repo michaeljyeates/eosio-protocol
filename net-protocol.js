@@ -17,7 +17,7 @@ const abi = {
             "fields": [
                 {
                     "name": "mode",
-                    "type": "uint8"
+                    "type": "uint32"
                 },
                 {
                     "name": "pending",
