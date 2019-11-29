@@ -21,6 +21,7 @@ const API = 'https://eu.eosdac.io';
 
 let current_buffer = new Uint8Array();
 let current_length = 0;
+let msg_type = -1;
 
 function concatenate(...arrays) {
     let totalLength = 0;
@@ -45,9 +46,10 @@ function client_data(data){
         for (let i=0;i<4;i++){
             current_length |= data[i] << (i * 8);
         }
+        msg_type = data[4];
 
         if (current_length > 2048000){
-            console.log(`ERROR : Length too long`);
+            console.log(`ERROR : Length too long ${current_length}`);
             return;
         }
     }
@@ -61,8 +63,8 @@ function client_data(data){
         client_end();
     }
     else {
-        console.log(`Packet stats current : ${current_length}, this : ${current_buffer.length}`);
-        console.log(`BIG DATA`);
+        console.log(`Packet stats current : ${current_length}, this : ${current_buffer.length}, msg_type : ${msg_type}`);
+        // console.log(`BIG DATA`);
         // process.exit(0);
     }
 }
@@ -72,6 +74,7 @@ function client_end(){
     debug_message(current_buffer);
     current_buffer = new Uint8Array();
     current_length = 0;
+    msg_type = -1;
 }
 
 async function connect(){
@@ -108,12 +111,18 @@ function debug_message(array){
 
 
     console.log(`LENGTH: ${len}, TYPE : ${type_name} (${type})`);
-    if (typeof type_name !== 'undefined'){
+    if (len <= 0){
+        console.error(`Malformed message`);
+        return;
+    }
+
+    if (typeof type_name !== 'undefined' && type === 0){
         try {
             console.log(types.get(type_name).deserialize(sb));
         }
         catch (e){
             console.error(`Failed to deserialize`, e);
+            console.error(sb.array);
         }
     }
 
