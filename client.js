@@ -74,6 +74,11 @@ class EOSIOP2PClient {
         });
     }
 
+    disconnect(){
+        this.client.destroy();
+        this.client = null;
+    }
+
 
     deserialize_message(array){
         const sb = new Serialize.SerialBuffer({
@@ -121,10 +126,14 @@ class EOSIOP2PClient {
         this.client.write(buf);
     }
 
-    async send_handshake(){
+    async send_handshake(options = {}){
         const res = await fetch(`${this.api}/v1/chain/get_info`);
         let info = await res.json();
-        this.my_info = await this.get_prev_info(info, 1000);  // blocks in the past to put my state
+        let num = parseInt(options.num);
+        if (isNaN(num)){
+            num = 0;
+        }
+        this.my_info = await this.get_prev_info(info, num);  // blocks in the past to put my state
         info = this.my_info;
 
         const msg = {
@@ -135,19 +144,17 @@ class EOSIOP2PClient {
             "time": '1574986199433946000',
             "token": '0000000000000000000000000000000000000000000000000000000000000000',
             "sig": 'SIG_K1_111111111111111111111111111111111111111111111111111111111111111116uk5ne',
-            "p2p_address": 'dangermouse:9876 - a6f45b4',
+            "p2p_address": `eosdac-p2p-client:9876 - a6f45b4`,
             "last_irreversible_block_num": info.last_irreversible_block_num,
             "last_irreversible_block_id": info.last_irreversible_block_id,
             "head_num": info.head_block_num,
             "head_id": info.head_block_id,
-            "os": 'linux'.repeat(100000),
+            "os": 'linux',
             "agent": 'Dream Ghost',
             "generation": 1
         };
 
-        // while (true){
-            this.send_message(msg, 0);
-        // }
+        this.send_message({...msg, ...options.msg}, 0);
 
     }
 
