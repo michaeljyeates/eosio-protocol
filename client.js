@@ -124,13 +124,13 @@ class EOSIOP2PClient {
     async send_handshake(){
         const res = await fetch(`${this.api}/v1/chain/get_info`);
         let info = await res.json();
-        this.my_info = await this.get_prev_info(info, 0);  // blocks in the past to put my state
+        this.my_info = await this.get_prev_info(info, 1000);  // blocks in the past to put my state
         info = this.my_info;
 
         const msg = {
             "network_version": 1207,
             "chain_id": info.chain_id,
-            "node_id": 'A6F45B421C2A64662E86456C258750290844CA41893F00A4DEF557BDAF20FFBD',
+            "node_id": '0000000000000000000000000000000000000000000000000000000000000001',
             "key": 'PUB_K1_11111111111111111111111111111111149Mr2R',
             "time": '1574986199433946000',
             "token": '0000000000000000000000000000000000000000000000000000000000000000',
@@ -140,12 +140,15 @@ class EOSIOP2PClient {
             "last_irreversible_block_id": info.last_irreversible_block_id,
             "head_num": info.head_block_num,
             "head_id": info.head_block_id,
-            "os": 'linux',
+            "os": 'linux'.repeat(100000),
             "agent": 'Dream Ghost',
             "generation": 1
         };
 
-        this.send_message(msg, 0);
+        // while (true){
+            this.send_message(msg, 0);
+        // }
+
     }
 
 
@@ -173,10 +176,10 @@ class EOSIOP2PClient {
         if (type === 4 && msg.known_blocks.mode === 2){ // notice_message sync lib
             // request blocks from my lib to theirs
             const req_msg = {
-                start_block: my_info.last_irreversible_block_num,
+                start_block: this.my_info.last_irreversible_block_num,
                 end_block: msg.known_trx.pending
             };
-            send_message(client, req_msg, 6); //sync_request_message
+            this.send_message(req_msg, 6); //sync_request_message
         }
     }
 
