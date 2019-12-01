@@ -2,13 +2,15 @@
 const {Serialize} = require('eosjs');
 const net = require('net');
 const fetch = require('node-fetch');
+const EventEmitter = require('events');
 
 const {concatenate} = require('./utils');
 const {abi, types} = require('./net-protocol');
 
 
-class EOSIOP2PClient {
-    constructor({host, port, api}){
+class EOSIOP2PClient extends EventEmitter {
+    constructor({host, port, api, debug}){
+        super();
         this.host = host;
         this.port = port;
         this.api = api;
@@ -17,21 +19,32 @@ class EOSIOP2PClient {
         this.client;
         this.abi = abi;
         this.types = types;
+        this._debug = debug;
 
         setInterval(this.process_queue.bind(this), 50);
     }
 
+    debug(...msg){
+        if (this._debug){
+            console.log(...msg);
+        }
+    }
+
+    error(msg){
+        console.error(msg);
+    }
+
     debug_message([type, type_name, data]){
         try {
-            console.log(`<<< Type : ${type_name} (${type})`);
+            this.debug(`<<< Type : ${type_name} (${type})`);
             // do not debug blocks or transactions
             if (type < 7){
-                console.log(data);
+                this.debug(data);
             }
         }
         catch (e){
-            console.error(`Failed to deserialize`, e);
-            console.error(type, type_name, data);
+            this.error(`Failed to deserialize`, e);
+            this.error(type, type_name, data);
         }
     }
 
@@ -60,6 +73,10 @@ class EOSIOP2PClient {
     async connect(){
         return new Promise((resolve, reject) => {
             this.client = new net.Socket();
+            this.client.on('error', (e) => {
+                this.emit('net_error', e);
+                reject(e);
+            });
             const self = this;
             this.client.connect(this.port, this.host, function() {
                 console.log('Connected to p2p');
@@ -69,12 +86,15 @@ class EOSIOP2PClient {
                     self.current_buffer = concatenate(self.current_buffer, data);
                 });
 
+                self.emit('connected');
+
                 resolve(self.client);
             });
         });
     }
 
     disconnect(){
+        this.client.end();
         this.client.destroy();
         this.client = null;
     }
@@ -100,13 +120,17 @@ class EOSIOP2PClient {
     }
 
     async send_message(msg, type){
+        if (!this.client){
+            this.error(`Not sending message because we do not have a client`);
+            return;
+        }
         const sb = new Serialize.SerialBuffer({
             textEncoder: new TextEncoder,
             textDecoder: new TextDecoder
         });
 
         // put the message into a serialbuffer
-        const msg_types = abi.variants[0].types;
+        const msg_types = this.abi.variants[0].types;
         types.get(msg_types[type]).serialize(sb, msg);
 
         const len = sb.length;
@@ -122,7 +146,7 @@ class EOSIOP2PClient {
 
         const buf = Buffer.concat([Buffer.from(header.asUint8Array()), Buffer.from(sb.asUint8Array())]);
 
-        console.log(`>>> Type : ${msg_types[type]} (${type})`, msg);
+        this.debug(`>>> Type : ${msg_types[type]} (${type})`, msg);
         this.client.write(buf);
     }
 
@@ -136,10 +160,10 @@ class EOSIOP2PClient {
         this.my_info = await this.get_prev_info(info, num);  // blocks in the past to put my state
         info = this.my_info;
 
-        const msg = {
-            "network_version": 1207,
+        let msg = {
+            "network_version": 1206,
             "chain_id": info.chain_id,
-            "node_id": '0000000000000000000000000000000000000000000000000000000000000001',
+            "node_id": '0585cab37823404b8c82d6fcc66c4faf20b0f81b2483b2b0f186dd47a1230fdc',
             "key": 'PUB_K1_11111111111111111111111111111111149Mr2R',
             "time": '1574986199433946000',
             "token": '0000000000000000000000000000000000000000000000000000000000000000',
@@ -154,7 +178,11 @@ class EOSIOP2PClient {
             "generation": 1
         };
 
-        this.send_message({...msg, ...options.msg}, 0);
+        if (options.msg){
+            msg = {...msg, ...options.msg};
+        }
+
+        this.send_message(msg, 0);
 
     }
 
@@ -180,6 +208,9 @@ class EOSIOP2PClient {
     }
 
     process_message([type, type_name, msg]){
+        this.emit(type_name, msg);
+        this.emit('message', type, type_name, msg);
+
         if (type === 4 && msg.known_blocks.mode === 2){ // notice_message sync lib
             // request blocks from my lib to theirs
             const req_msg = {

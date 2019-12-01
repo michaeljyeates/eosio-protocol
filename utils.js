@@ -12,4 +12,11 @@ const concatenate = (...arrays) => {
     return result;
 };
 
-module.exports = {concatenate};
+
+async function sleep(ms){
+    return new Promise(resolve => {
+        setTimeout(resolve, ms);
+    });
+}
+
+module.exports = {concatenate, sleep};
