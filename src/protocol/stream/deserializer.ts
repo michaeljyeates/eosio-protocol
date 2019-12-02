@@ -6,7 +6,7 @@ const { TextDecoder, TextEncoder } = require('util');
 
 export class EOSIOStreamDeserializer extends stream.Transform {
     constructor(options){
-        super({readableObjectMode:true});
+        super({readableObjectMode:true, highWaterMark: 1024 * 1024});
     }
 
     _transform(data, encoding, callback){
@@ -14,6 +14,7 @@ export class EOSIOStreamDeserializer extends stream.Transform {
             const msg = this.deserialize_message(data);
 
             if (msg){
+                // console.log(`Sending from deserializer `, msg);
                 this.push(msg);
             }
 

@@ -1,5 +1,14 @@
 /*
 Net protocol message types
+   using net_message = static_variant<handshake_message,
+                                      chain_size_message,
+                                      go_away_message,
+                                      time_message,
+                                      notice_message,
+                                      request_message,
+                                      sync_request_message,
+                                      signed_block,         // which = 7
+                                      packed_transaction>;  // which = 8
  */
 
 class OrderedChecksum {
@@ -16,6 +25,36 @@ export class NetMessage {
             this[p] = data[p];
         }
     }
+
+    static from(type: number): NetMessage {
+        switch (type){
+            case 0:
+                return new HandshakeMessage();
+                break;
+            case 1:
+                return new ChainSizeMessage();
+                break;
+            case 2:
+                return new GoAwayMessage();
+                break;
+            case 3:
+                return new TimeMessage();
+                break;
+            case 4:
+                return new NoticeMessage();
+                break;
+            case 5:
+                return new RequestMessage();
+                break;
+            case 6:
+                return new SyncRequestMessage();
+                break;
+            case 7:
+                return new SignedBlockMessage();
+                break;
+        }
+    }
+
 }
 
 export class HandshakeMessage extends NetMessage {
@@ -45,6 +84,21 @@ export class ChainSizeMessage extends NetMessage {
 }
 
 export class GoAwayMessage extends NetMessage {
+    static reasons: string[] = [
+        'no reason',
+        'self connect',
+        'duplicate',
+        'wrong chain',
+        'wrong version',
+        'chain is forked',
+        'unlinkable block received',
+        'bad transaction',
+        'invalid block',
+        'authentication failure',
+        'some other failure',
+        'some other non-fatal condition'
+    ];
+
     public reason: number;
     public node_id: string;
 }
@@ -69,4 +123,34 @@ export class RequestMessage extends NetMessage {
 export class SyncRequestMessage extends NetMessage {
     public start_block: number;
     public end_block: number;
+}
+
+export class SignedBlockMessage extends NetMessage {
+    public timestamp: string;
+    public producer: string;
+    public confirmed: number;
+    public previous: string;
+    public transaction_mroot: string;
+    public action_mroot: string;
+    public schedule_version: number;
+    public new_producers: any[];
+    public header_extensions: any[];
+    public producer_signature: string;
+    public transactions: any[];
+    public block_extensions: any[];
+}
+
+export class PackedTransactionMessage extends NetMessage {
+    public timestamp: string;
+    public producer: string;
+    public confirmed: number;
+    public previous: string;
+    public transaction_mroot: string;
+    public action_mroot: string;
+    public schedule_version: number;
+    public new_producers: any[];
+    public header_extensions: any[];
+    public producer_signature: string;
+    public transactions: any[];
+    public block_extensions: any[];
 }

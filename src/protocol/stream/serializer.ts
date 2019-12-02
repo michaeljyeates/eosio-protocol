@@ -21,9 +21,10 @@ export class EOSIOStreamSerializer extends stream.Transform {
             callback();
         }
         catch (e){
-            this.destroy(new Error(`Failed to serialize`));
+            const err_msg = `Failed to serialize ${e.message}`;
+            this.destroy(new Error(err_msg));
             console.error(e);
-            callback(`Failed to serialize`);
+            callback(err_msg);
         }
     }
 

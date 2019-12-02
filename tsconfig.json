@@ -1,12 +1,13 @@
 {
-  "compilerOptions": {
-    "outDir": "./dist",
-    "allowJs": false,
-    "lib": ["es2018"],
-    "module": "commonjs",
-    "target": "es2018"
-  },
-  "include": [
-    "./src/**/*"
-  ]
+    "compilerOptions": {
+        "sourceMap": true,
+        "outDir": "./dist",
+        "allowJs": true,
+        "lib": ["es2018"],
+        "module": "commonjs",
+        "target": "es2018"
+    },
+    "include": [
+        "./src/**/*"
+    ]
 }

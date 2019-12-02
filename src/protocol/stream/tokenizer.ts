@@ -1,6 +1,6 @@
 
 import * as stream from 'stream';
-import {concatenate} from '../../includes/utils';
+const {concatenate} = require('../../includes/utils');
 
 export class EOSIOStreamTokenizer extends stream.Transform {
     private array: Uint8Array;
@@ -32,12 +32,13 @@ export class EOSIOStreamTokenizer extends stream.Transform {
 
         let item;
         while (item = this.buffer.shift()){
+            // console.log('item in read buffer', item);
             this.push(item);
         }
 
         callback();
 
-        return false;
+
     }
 
     _flush(callback){
@@ -59,7 +60,7 @@ export class EOSIOStreamTokenizer extends stream.Transform {
         if (current_length <= this.array.length){
             // console.log(`Read queue ${current_length} from buffer ${this.array.length}`);
 
-            // console.log(this.deserialize_message(this.array.slice(0, current_length)));
+            // console.log(this.array.slice(0, current_length));
             msg_data = this.array.slice(0, current_length);
 
             this.array = this.array.slice(current_length);

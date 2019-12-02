@@ -9,6 +9,7 @@ import {sleep}  from './includes/utils';
 import * as pron from './includes/pron';
 import { NodeConfig } from './node-config';
 import * as stream from 'stream';
+import {EOSIOStreamConsoleDebugger} from "./protocol/stream/debugger";
 
 
 class TestRunner {
@@ -44,7 +45,8 @@ class BlockTransmissionTestRunner extends TestRunner {
         super(node);
     }
 
-    async on_signed_block(msg) {
+    async on_signed_block(msg): Promise<void> {
+        // console.log('TestRunner:on_signed_block');
         clearTimeout(this.kill_timer);
         this.kill_timer = setTimeout(this.kill.bind(this), this.block_timeout);
 
@@ -60,18 +62,18 @@ class BlockTransmissionTestRunner extends TestRunner {
         this.last_block_time = tm;
     }
 
-    async on_error(e){
+    async on_error(e): Promise<void> {
         // console.error(`Received error`, e);
         this.killed = true;
         this.killed_reason = e.code;
         this.killed_detail = (e + '').replace('Error: ', '');
     }
 
-    log_results(results){
+    log_results(results): void{
         console.log(results);
     }
 
-    async run(debug = false){
+    async run(debug = false): Promise<void>{
         this.kill_timer = setTimeout(this.kill.bind(this), this.block_timeout);
 
         const num_blocks = 5000;
@@ -81,7 +83,8 @@ class BlockTransmissionTestRunner extends TestRunner {
         try {
             const client: stream.Stream = await p2p.connect();
             // client.pipe(process.stdout);
-            client
+
+            const deserialized_stream = client
                 .pipe(new EOSIOStreamTokenizer({}))
                 .pipe(new EOSIOStreamDeserializer({}))
                 .on('data', (obj) => {
@@ -91,9 +94,15 @@ class BlockTransmissionTestRunner extends TestRunner {
                     }
                 });
 
+
+            if (debug){
+                deserialized_stream
+                    .pipe(new EOSIOStreamConsoleDebugger({}));
+            }
+
             await p2p.send_handshake({msg: {p2p_address: `dreamghost::${pron[0]} - a6f45b4`}, num: num_blocks});
 
-            // get 500 blocks before lib
+            // get num blocks before lib
             const msg = new SyncRequestMessage();
             msg.copy({start_block: p2p.my_info.last_irreversible_block_num, end_block: p2p.my_info.last_irreversible_block_num + num_blocks});
             await p2p.send_message(msg, 6);
@@ -108,7 +117,7 @@ class BlockTransmissionTestRunner extends TestRunner {
         this.log_results(results);
     }
 
-    async get_result_json(){
+    async get_result_json(): Promise<Object>{
         const raw = {
             status:'success',
             block_count: this.block_count,
@@ -151,7 +160,7 @@ class BlockTransmissionTestRunner extends TestRunner {
         return results;
     }
 
-    async wait_for_tests(num){
+    async wait_for_tests(num) {
         return new Promise(async (resolve, reject) => {
             while (true){
                 // console.log(`Checking success for ${this.node.name}`);
@@ -174,7 +183,7 @@ class BlockTransmissionTestRunner extends TestRunner {
         });
     }
 
-    kill(){
+    kill(): void{
         this.killed = true;
         this.killed_reason = 'timeout';
         this.killed_detail = 'Timed out while receiving blocks';
@@ -182,7 +191,7 @@ class BlockTransmissionTestRunner extends TestRunner {
 }
 
 
-const run_tests = async (nodes, network) => {
+const run_tests = async (nodes: any, network: string) => {
     for (let n=0;n<nodes[network].length;n++){
         const node = nodes[network][n];
         console.log(`Running tests for ${node.name} (${node.host}:${node.port})`);
@@ -192,7 +201,7 @@ const run_tests = async (nodes, network) => {
     }
 };
 
-const network = 'wax';
+const network = 'jungle';
 const debug = false;
 
 run_tests(NodeConfig, network);

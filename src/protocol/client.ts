@@ -6,7 +6,21 @@ import * as stream from 'stream';
 import { NetProtocol } from './net-protocol';
 import { NetMessage, HandshakeMessage } from './messages';
 import { EOSIOStreamSerializer } from './stream/serializer';
+import { EOSIOStreamConsoleDebugger } from './stream/debugger';
+import {EOSIOStreamTokenizer} from "./stream/tokenizer";
+import {EOSIOStreamDeserializer} from "./stream/deserializer";
 
+
+export class EOSIOSharedState {
+    private chain_id: string;
+    private head_block_num: number;
+    private head_block_id: string;
+    private last_irreversible_block_num: number;
+    private last_irreversible_block_id: string;
+
+    load(){}
+    save(){}
+}
 
 export class EOSIOP2PClient extends EventEmitter {
     private host: string;
@@ -40,21 +54,7 @@ export class EOSIOP2PClient extends EventEmitter {
         console.error(...msg);
     }
 
-    debug_message([type, type_name, data]){
-        try {
-            this.debug(`<<< Type : ${type_name} (${type})`);
-            // do not debug blocks or transactions
-            if (type < 7){
-                this.debug(data);
-            }
-        }
-        catch (e){
-            this.error(`Failed to deserialize`, e);
-            this.error(type, type_name, data);
-        }
-    }
-
-    async get_block_id(block_num_or_id){
+    async get_block_id(block_num_or_id: number|string): Promise<string> {
         const res = await fetch(`${this.api}/v1/chain/get_block`, {
             method: 'POST',
             body: JSON.stringify({block_num_or_id})
@@ -95,17 +95,18 @@ export class EOSIOP2PClient extends EventEmitter {
         });
     }
 
-    disconnect(){
+    disconnect(): void {
         this.client.end();
         this.client.destroy();
         this.client = null;
     }
 
-    async send_message(msg: NetMessage, type: number){
-        if (!this.client){
+    async send_message(msg: NetMessage, type: number) {
+        if (this.client === null){
             this.error(`Not sending message because we do not have a client`);
             return;
         }
+        // console.log(this.client);
 
         const msg_types = NetProtocol.variant_types();
         const sr = new stream.Readable({objectMode:true, read() {}});
@@ -113,12 +114,19 @@ export class EOSIOP2PClient extends EventEmitter {
 
         const write_stream = new EOSIOStreamSerializer({});
         sr.pipe(write_stream).on('data', (d) => {
-            this.debug(`>>> `, d);
-            this.client.write(d);
+            this.debug(`>>> DATA TO CLIENT `, d);
+            // console.log(this.client);
+
+            if (this.client){
+                this.client.write(d);
+            }
+            else {
+                console.log(`No client`);
+            }
         });
     }
 
-    async send_handshake(options: any = {}){
+    async send_handshake(options: any = {}): Promise<void> {
         const res = await fetch(`${this.api}/v1/chain/get_info`);
         let info = await res.json();
         if (!options.msg || (!options.msg.head_id && !options.msg.last_irreversible_block_id)){
@@ -157,7 +165,7 @@ export class EOSIOP2PClient extends EventEmitter {
             msg.copy(options.msg);
         }
 
-        this.send_message(msg, 0);
+        await this.send_message(msg, 0);
     }
 
     // process_message([type, type_name, msg]){
