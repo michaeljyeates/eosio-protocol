@@ -38,7 +38,7 @@ export module NodeConfig {
             api: 'https://jungle.eosdac.io'
         },
         {
-            bp_name: '',
+            bp_name: 'eosnationftw',
             name: 'EOS Nation',
             host: 'jungle.eosn.io',
             port: 9876,
