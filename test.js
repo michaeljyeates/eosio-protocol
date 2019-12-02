@@ -52,12 +52,6 @@ class BlockTransmissionTestRunner extends TestRunner {
         this.killed_detail = (e + '').replace('Error: ', '');
     }
 
-    on_message(type, type_name, msg){
-        if (type < 7){
-            // console.log(msg);
-        }
-    }
-
     log_results(results){
         console.log(results);
     }
