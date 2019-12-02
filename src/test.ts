@@ -1,15 +1,17 @@
 
 import { EOSIOStreamDeserializer } from './protocol/stream/deserializer';
 import { EOSIOStreamTokenizer } from './protocol/stream/tokenizer';
-import { SyncRequestMessage } from './protocol/messages';
+import {HandshakeMessage, SyncRequestMessage} from './protocol/messages';
 
-import { EOSIOP2PClient } from './protocol/client';
+import { EOSIOP2PClientConnection } from './protocol/client';
 import {sleep}  from './includes/utils';
 
 import * as pron from './includes/pron';
 import { NodeConfig } from './node-config';
 import * as stream from 'stream';
 import {EOSIOStreamConsoleDebugger} from "./protocol/stream/debugger";
+
+const fetch = require('node-fetch');
 
 
 class TestRunner {
@@ -40,6 +42,7 @@ class TestRunner {
 
 class BlockTransmissionTestRunner extends TestRunner {
     private kill_timer: NodeJS.Timeout;
+    private p2p: EOSIOP2PClientConnection;
 
     constructor(node){
         super(node);
@@ -78,7 +81,8 @@ class BlockTransmissionTestRunner extends TestRunner {
 
         const num_blocks = 5000;
 
-        const p2p = new EOSIOP2PClient({...this.node, ...{debug}});
+        const p2p = new EOSIOP2PClientConnection({...this.node, ...{debug}});
+        this.p2p = p2p;
 
         try {
             const client: stream.Stream = await p2p.connect();
@@ -97,14 +101,27 @@ class BlockTransmissionTestRunner extends TestRunner {
 
             if (debug){
                 deserialized_stream
-                    .pipe(new EOSIOStreamConsoleDebugger({}));
+                    .pipe(new EOSIOStreamConsoleDebugger({prefix: '<<<'}));
             }
 
-            await p2p.send_handshake({msg: {p2p_address: `dreamghost::${pron[0]} - a6f45b4`}, num: num_blocks});
+            const res = await fetch(`${this.node.api}/v1/chain/get_info`);
+            let info = await res.json();
+
+            const prev_info = await this.get_prev_info(info, num_blocks);
+
+            const override = {
+                chain_id: info.chain_id,
+                p2p_address: `dreamghost::${pron[0]} - a6f45b4`,
+                last_irreversible_block_num: prev_info.last_irreversible_block_num,
+                last_irreversible_block_id: prev_info.last_irreversible_block_id,
+                head_num: prev_info.head_block_num,
+                head_id: prev_info.head_block_id,
+            };
+            await this.send_handshake(override);
 
             // get num blocks before lib
             const msg = new SyncRequestMessage();
-            msg.copy({start_block: p2p.my_info.last_irreversible_block_num, end_block: p2p.my_info.last_irreversible_block_num + num_blocks});
+            msg.copy({start_block: prev_info.last_irreversible_block_num, end_block: prev_info.last_irreversible_block_num + num_blocks});
             await p2p.send_message(msg, 6);
         }
         catch (e){
@@ -115,6 +132,28 @@ class BlockTransmissionTestRunner extends TestRunner {
         p2p.disconnect();
 
         this.log_results(results);
+    }
+
+
+    async get_block_id(block_num_or_id: number|string): Promise<string> {
+        const res = await fetch(`${this.node.api}/v1/chain/get_block`, {
+            method: 'POST',
+            body: JSON.stringify({block_num_or_id})
+        });
+        const info = await res.json();
+
+        return info.id;
+    }
+
+    async get_prev_info(info: any, num=1000){
+        if (num > 0){
+            info.head_block_num -= num;
+            info.last_irreversible_block_num -= num;
+            info.head_block_id = await this.get_block_id(info.head_block_num);
+            info.last_irreversible_block_id = await this.get_block_id(info.last_irreversible_block_num);
+        }
+
+        return info;
     }
 
     async get_result_json(): Promise<Object>{
@@ -188,6 +227,34 @@ class BlockTransmissionTestRunner extends TestRunner {
         this.killed_reason = 'timeout';
         this.killed_detail = 'Timed out while receiving blocks';
     }
+
+    private async send_handshake(override) {
+
+        let msg = new HandshakeMessage();
+        msg.copy({
+            "network_version": 1206,
+            "chain_id": '0000000000000000000000000000000000000000000000000000000000000000', // should be o
+            "node_id": '0585cab37823404b8c82d6fcc66c4faf20b0f81b2483b2b0f186dd47a1230fdc',
+            "key": 'PUB_K1_11111111111111111111111111111111149Mr2R',
+            "time": '1574986199433946000',
+            "token": '0000000000000000000000000000000000000000000000000000000000000000',
+            "sig": 'SIG_K1_111111111111111111111111111111111111111111111111111111111111111116uk5ne',
+            "p2p_address": `eosdac-p2p-client:9876 - a6f45b4`,
+            "last_irreversible_block_num": 0,
+            "last_irreversible_block_id": '0000000000000000000000000000000000000000000000000000000000000000',
+            "head_num": 0,
+            "head_id": '0000000000000000000000000000000000000000000000000000000000000000',
+            "os": 'linux',
+            "agent": 'Dream Ghost',
+            "generation": 1
+        });
+
+        if (override){
+            msg.copy(override);
+        }
+
+        await this.p2p.send_message(msg, 0);
+    }
 }
 
 
@@ -202,7 +269,7 @@ const run_tests = async (nodes: any, network: string) => {
 };
 
 const network = 'jungle';
-const debug = false;
+const debug = true;
 
 run_tests(NodeConfig, network);
 // setInterval(run_tests, 60*2*1000, [config, network]);

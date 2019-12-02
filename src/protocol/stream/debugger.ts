@@ -22,36 +22,38 @@ export class EOSIOStreamConsoleDebugger extends stream.Writable {
         const msg = NetMessage.from(chunk[0]);
         msg.copy(chunk[2]);
 
+        const prefix = `${this.prefix}  [${chunk[1]}]`;
+
         switch (chunk[1]){
             case 'handshake_message':
-                console.log(`${this.prefix} handshake from ${chunk[2].p2p_address}`);
+                console.log(`${prefix} handshake from ${chunk[2].p2p_address}`);
                 break;
             case 'signed_block':
                 const sb_msg = <SignedBlockMessage>msg;
                 const block_num_hex = sb_msg.previous.substr(0, 8); // first 64 bits
                 const block_num = parseInt(block_num_hex, 16) + 1;
-                console.log(`${this.prefix} block #${block_num} signed by ${sb_msg.producer}`);
+                console.log(`${prefix} #${block_num} signed by ${sb_msg.producer}`);
                 break;
             case 'time_message':
                 const t_msg = <TimeMessage>msg;
-                console.log(`${this.prefix} time message ${t_msg}`);
+                console.log(`${prefix} time message dst: ${t_msg.dst}, org: ${t_msg.org}, rec: ${t_msg.rec}, xmt: ${t_msg.xmt}`);
                 break;
             case 'go_away_message':
                 const ga_msg = <GoAwayMessage>msg;
                 let reason = GoAwayMessage.reasons[ga_msg.reason];
-                console.log(`${this.prefix} go away message ${reason}`);
+                console.log(`${prefix} [${chunk[1]}] go away message ${reason}`);
                 break;
             case 'notice_message':
                 const n_msg = <NoticeMessage>msg;
-                console.log(`${this.prefix} notice message, lib : ${n_msg.known_trx.pending}, head ${n_msg.known_blocks.pending}`);
+                console.log(`${prefix} notice message, lib : ${n_msg.known_trx.pending}, head ${n_msg.known_blocks.pending}`);
                 break;
             case 'request_message':
                 const r_msg = <RequestMessage>msg;
-                console.log(`${this.prefix} request message`);
+                console.log(`${prefix} request message`);
                 break;
             case 'sync_request_message':
                 const sr_msg = <SyncRequestMessage>msg;
-                console.log(`${this.prefix} sync request message`);
+                console.log(`${prefix} sync request message`);
                 break;
             default:
                 // console.log('Unknown chunk', chunk);
