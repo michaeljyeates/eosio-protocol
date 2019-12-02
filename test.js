@@ -1,7 +1,6 @@
 
 const { EOSIOStreamDeserializer, EOSIOStreamTokenizer, EOSIOP2PClient } = require('./protocol/client');
 const {sleep} = require('./includes/utils');
-const fetch = require('node-fetch');
 
 const pron = require('./includes/pron');
 const config = require('./node-config');
@@ -60,44 +59,15 @@ class BlockTransmissionTestRunner extends TestRunner {
     }
 
     log_results(results){
-        let avg = 0;
-        let sum = 0;
-        let sum_b = 0n;
-        if (results.latencies.length > 0){
-            sum = results.latencies.reduce((previous, current) => current += previous);
-            sum_b = BigInt(sum_b);
-            avg = sum / results.latencies.length;
-        }
-
-
-        const ns_divisor = Math.pow(10, 9);
-        const total_time = sum / ns_divisor;
-        const blocks_per_ns = results.block_count / sum;
-
-        console.log(`
-TEST RESULTS
-===========
-name            : ${this.node.name}
-host            : ${this.node.host}:${this.node.port}
-status          : ${results.status}
-error code      : ${results.error_code}
-error detail    : ${results.error_detail}
-blocks received : ${results.block_count}
-total test time : ${total_time}s
-speed           : ${(blocks_per_ns * ns_divisor).toFixed(10)} blocks/s
-`);
+        console.log(results);
     }
-
 
     async run(debug = false){
         this.kill_timer = setTimeout(this.kill.bind(this), this.block_timeout);
 
-        const num = 5000;
+        const num_blocks = 5000;
 
         const p2p = new EOSIOP2PClient({...this.node, ...{debug}});
-        // p2p.on('signed_block', this.on_signed_block.bind(this));
-        // p2p.on('message', this.on_message.bind(this));
-        // p2p.on('net_error', this.on_error.bind(this));
 
         try {
             const client = await p2p.connect();
@@ -112,23 +82,23 @@ speed           : ${(blocks_per_ns * ns_divisor).toFixed(10)} blocks/s
                     }
                 });
 
-            await p2p.send_handshake({msg: {p2p_address: `dreamghost::${pron[0]} - a6f45b4`}, num});
+            await p2p.send_handshake({msg: {p2p_address: `dreamghost::${pron[0]} - a6f45b4`}, num: num_blocks});
 
             // get 500 blocks before lib
-            await p2p.send_message({start_block: p2p.my_info.last_irreversible_block_num, end_block: p2p.my_info.last_irreversible_block_num + num}, 6);
+            await p2p.send_message({start_block: p2p.my_info.last_irreversible_block_num, end_block: p2p.my_info.last_irreversible_block_num + num_blocks}, 6);
         }
         catch (e){
             console.error(e);
         }
 
-        const results = await this.wait_for_tests(num);
+        const results = await this.wait_for_tests(num_blocks);
         p2p.disconnect();
 
         this.log_results(results);
     }
 
     async get_result_json(){
-        const res = {
+        const raw = {
             status:'success',
             block_count: this.block_count,
             latencies: this.latencies,
@@ -136,9 +106,38 @@ speed           : ${(blocks_per_ns * ns_divisor).toFixed(10)} blocks/s
             error_detail: this.killed_detail
         };
 
-        res.status = (!this.killed_reason)?'success':'error';
+        raw.status = (!this.killed_reason)?'success':'error';
 
-        return res;
+        let avg = 0;
+        let sum = 0;
+        let sum_b = 0n;
+        if (raw.latencies.length > 0){
+            sum = raw.latencies.reduce((previous, current) => current += previous);
+            sum_b = BigInt(sum_b);
+            avg = sum / raw.latencies.length;
+        }
+
+        const ns_divisor = Math.pow(10, 9);
+        const total_time = sum / ns_divisor;
+        const blocks_per_ns = raw.block_count / sum;
+        let speed = (blocks_per_ns * ns_divisor).toFixed(10);
+        if (isNaN(speed)){
+            speed = '';
+        }
+
+        const results = {
+            bp_name         : this.node.bp_name,
+            name            : this.node.name,
+            host            : `${this.node.host}:${this.node.port}`,
+            status          : raw.status,
+            error_code      : raw.error_code,
+            error_detail    : raw.error_detail,
+            blocks_received : raw.block_count,
+            total_test_time : total_time,
+            speed           : speed
+        };
+
+        return results;
     }
 
     async wait_for_tests(num){
