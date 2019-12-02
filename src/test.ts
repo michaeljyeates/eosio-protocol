@@ -83,6 +83,11 @@ class BlockTransmissionTestRunner extends TestRunner {
 
         const p2p = new EOSIOP2PClientConnection({...this.node, ...{debug}});
         this.p2p = p2p;
+        p2p.on('net_error', (e) => {
+            this.killed = true;
+            this.killed_reason = 'net_error';
+            this.killed_detail = e.message;
+        });
 
         try {
             const client: stream.Stream = await p2p.connect();
@@ -132,7 +137,7 @@ class BlockTransmissionTestRunner extends TestRunner {
             await p2p.send_message(msg, 6);
         }
         catch (e){
-            console.error(e);
+
         }
 
         const results = await this.wait_for_tests(num_blocks);
@@ -275,7 +280,7 @@ const run_tests = async (nodes: any, network: string) => {
     }
 };
 
-const network = 'wax';
+const network = 'jungle';
 const debug = false;
 
 run_tests(NodeConfig, network);
