@@ -1,9 +1,9 @@
 
 import { EOSIOStreamDeserializer } from './protocol/stream/deserializer';
 import { EOSIOStreamTokenizer } from './protocol/stream/tokenizer';
-import {HandshakeMessage, SyncRequestMessage} from './protocol/messages';
+import {GoAwayMessage, HandshakeMessage, SyncRequestMessage} from './protocol/messages';
 
-import { EOSIOP2PClientConnection } from './protocol/client';
+import { EOSIOP2PClientConnection } from './protocol/connection';
 import {sleep}  from './includes/utils';
 
 import * as pron from './includes/pron';
@@ -95,6 +95,13 @@ class BlockTransmissionTestRunner extends TestRunner {
                     if (obj[0] === 7){
                         // console.log(`Received block `);
                         this.on_signed_block(obj[2]);
+                    }
+                    if (obj[0] === 2){
+                        // console.log(`Received block `);
+                        // this.on_signed_block(obj[2]);
+                        this.killed = true;
+                        this.killed_reason = 'go_away';
+                        this.killed_detail = `Received go away message ${GoAwayMessage.reasons[obj[0]]}`;
                     }
                 });
 
@@ -268,8 +275,8 @@ const run_tests = async (nodes: any, network: string) => {
     }
 };
 
-const network = 'jungle';
-const debug = true;
+const network = 'wax';
+const debug = false;
 
 run_tests(NodeConfig, network);
 // setInterval(run_tests, 60*2*1000, [config, network]);
