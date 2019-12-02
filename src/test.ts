@@ -101,7 +101,7 @@ class BlockTransmissionTestRunner extends TestRunner {
                         // this.on_signed_block(obj[2]);
                         this.killed = true;
                         this.killed_reason = 'go_away';
-                        this.killed_detail = `Received go away message ${GoAwayMessage.reasons[obj[0]]}`;
+                        this.killed_detail = `Received go away message ${GoAwayMessage.reasons[obj[2].reason]}`;
                     }
                 });
 
