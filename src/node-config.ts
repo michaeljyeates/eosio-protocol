@@ -95,36 +95,41 @@ export module NodeConfig {
         },
     ];
     export var mainnet: any[] = [
-        /*{
+        {
+            bp_name: 'eosdacserver',
             name: 'eosDAC',
             host: 'eu.eosdac.io',
             port: 49876,
             api: 'https://api.eossweden.org'
-      }/*,
+      },
         {
+            bp_name: 'teamgreymass',
             name: 'Greymass',
             host: 'seed.greymass.com',
             port: 9876,
             api: 'https://eos.greymass.com'
-        },*/
+        },
         {
+            bp_name: 'eosswedenorg',
             name: 'SW/Eden',
             host: 'p2p.eossweden.org',
             port: 9076,
             api: 'https://api.eossweden.org'
-        }/*,
+        },
          {
+            bp_name: 'eosriobrazil',
              name: 'EOS Rio',
              host: 'br.eosrio.io',
              port: 9876,
              api: 'https://api.eosrio.io'
          },
          {
+            bp_name: 'eosnationftw',
              name: 'EOS Nation',
              host: 'peer.eosn.io',
              port: 9876,
              api: 'https://api.eosn.io'
-         }*/
+         }
     ];
     export var kylin: any[] = [
         {
