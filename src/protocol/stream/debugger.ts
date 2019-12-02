@@ -27,7 +27,7 @@ export class EOSIOStreamConsoleDebugger extends stream.Writable {
                 const sb_msg = <SignedBlockMessage>msg;
                 const block_num_hex = sb_msg.previous.substr(0, 8); // first 64 bits
                 const block_num = parseInt(block_num_hex, 16) + 1;
-                console.log(`Received signed block #${block_num} signed by ${sb_msg.producer}`);
+                console.log(`Received block #${block_num} signed by ${sb_msg.producer}`);
                 break;
             case 'time_message':
                 const t_msg = <TimeMessage>msg;
