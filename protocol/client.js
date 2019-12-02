@@ -134,7 +134,7 @@ class EOSIOP2PClient extends EventEmitter {
 
 
         let msg = {
-            "network_version": 1207,
+            "network_version": 1206,
             "chain_id": info.chain_id,
             "node_id": '0585cab37823404b8c82d6fcc66c4faf20b0f81b2483b2b0f186dd47a1230fdc',
             "key": 'PUB_K1_11111111111111111111111111111111149Mr2R',
