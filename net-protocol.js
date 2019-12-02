@@ -2,16 +2,15 @@
 const {Serialize} = require('eosjs');
 
 const {system_abi} = require('./system-abi');
-var merge = require('merge-deep');
 
 const abi = {
     version: 'eosio::abi/1.1',
     types: [],
     structs: [{
-        "name": "transaction_id",
-        "base": "checksum256",
-        "fields":[]
-    },{
+                "name": "transaction_id",
+                "base": "checksum256",
+                "fields":[]
+            },{
             "name": "ordered_checksum",
             "base": "",
             "fields": [

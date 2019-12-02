@@ -3,9 +3,178 @@ const {Serialize} = require('eosjs');
 const net = require('net');
 const fetch = require('node-fetch');
 const EventEmitter = require('events');
+const stream = require('stream');
 
 const {concatenate} = require('./utils');
 const {abi, types} = require('./net-protocol');
+
+class EOSIOStreamSerializer extends stream.Transform {
+    constructor(options){
+        super({writableObjectMode:true, readableObjectMode:true});
+    }
+
+    _transform(data, encoding, callback){
+        try {
+            // console.log(`transform`, data);
+            const msg = this.serialize_message(data);
+
+            if (msg){
+                this.push(msg);
+            }
+
+            callback();
+        }
+        catch (e){
+            this.destroy(`Failed to serialize`);
+            console.error(e);
+            callback(`Failed to serialize`);
+        }
+    }
+
+    serialize_message([type, type_name, data]){
+
+        const sb = new Serialize.SerialBuffer({
+            textEncoder: new TextEncoder,
+            textDecoder: new TextDecoder
+        });
+
+        // put the message into a serialbuffer
+        const msg_types = abi.variants[0].types;
+        types.get(msg_types[type]).serialize(sb, data);
+
+        const len = sb.length;
+        // console.log(`${msg_types[type]} buffer is ${len} long`);
+
+        // Append length and msg type
+        const header = new Serialize.SerialBuffer({
+            textEncoder: new TextEncoder,
+            textDecoder: new TextDecoder
+        });
+        header.pushUint32(len + 1);
+        header.push(type); // message type
+
+        const buf = Buffer.concat([Buffer.from(header.asUint8Array()), Buffer.from(sb.asUint8Array())]);
+
+        return buf;
+    }
+}
+
+class EOSIOStreamDeserializer extends stream.Transform {
+    constructor(options){
+        super({readableObjectMode:true});
+    }
+
+    _transform(data, encoding, callback){
+        try {
+            const msg = this.deserialize_message(data);
+
+            if (msg){
+                this.push(msg);
+            }
+
+            callback();
+        }
+        catch (e){
+            this.destroy(`Failed to deserialize`);
+            console.error(e);
+            callback(`Failed to deserialize`);
+        }
+    }
+
+    deserialize_message(array){
+        const sb = new Serialize.SerialBuffer({
+            textEncoder: new TextEncoder,
+            textDecoder: new TextDecoder,
+            array
+        });
+
+        const len = sb.getUint32();
+        const type = sb.get();
+        const msg_types = abi.variants[0].types;
+        const type_name = msg_types[type];
+
+        if (typeof type_name === 'undefined'){
+            throw new Error(`Unknown message type "${type}" while deserializing`);
+        }
+
+        return [type, type_name, types.get(type_name).deserialize(sb)];
+    }
+
+}
+
+
+class EOSIOStreamTokeniser extends stream.Transform {
+    constructor(options){
+        // options.objectMode = true;
+        options.highWaterMark = 65000000000;
+        super(options);
+
+        this.array = new Uint8Array();
+        this.buffer = [];
+        this.readable = false;
+        this.writable = true;
+    }
+
+    _transform(data, encoding, callback){
+        // console.log(data);
+        if (encoding !== 'buffer'){
+            console.log('Received UTF8');
+            // throw new Error(`Incorrect buffer encoding ${encoding}`);
+        }
+
+        this.array = concatenate(this.array, data);
+
+        // console.log(`Stream write`, this.array.length);
+
+        let msg_data;
+        while (msg_data = this.process()){
+            this.buffer.push(msg_data);
+        }
+
+        let item;
+        while (item = this.buffer.shift()){
+            this.push(item);
+        }
+
+        this.readable = (this.buffer.length > 0);
+
+        this.writable = true;
+
+        callback();
+
+        return false;
+    }
+
+    _flush(callback){
+        callback();
+    }
+
+    process(){
+        // read length of the first message
+        let current_length = 0;
+        for (let i=0;i<4;i++){
+            current_length |= this.array[i] << (i * 8);
+        }
+        current_length += 4;
+
+        let msg_data = null;
+
+        // console.log(`Processing with length ${current_length}`);
+
+        if (current_length <= this.array.length){
+            // console.log(`Read queue ${current_length} from buffer ${this.array.length}`);
+
+            // console.log(this.deserialize_message(this.array.slice(0, current_length)));
+            msg_data = this.array.slice(0, current_length);
+
+            this.array = this.array.slice(current_length);
+            // console.log(`Length now ${this.array.length}`);
+        }
+
+        return msg_data;
+    }
+
+}
 
 
 class EOSIOP2PClient extends EventEmitter {
@@ -20,8 +189,6 @@ class EOSIOP2PClient extends EventEmitter {
         this.abi = abi;
         this.types = types;
         this._debug = debug;
-
-        setInterval(this.process_queue.bind(this), 50);
     }
 
     debug(...msg){
@@ -48,7 +215,6 @@ class EOSIOP2PClient extends EventEmitter {
         }
     }
 
-
     async get_block_id(block_num_or_id){
         const res = await fetch(`${this.api}/v1/chain/get_block`, {
             method: 'POST',
@@ -73,6 +239,7 @@ class EOSIOP2PClient extends EventEmitter {
     async connect(){
         return new Promise((resolve, reject) => {
             this.client = new net.Socket();
+
             this.client.on('error', (e) => {
                 this.emit('net_error', e);
                 reject(e);
@@ -81,15 +248,11 @@ class EOSIOP2PClient extends EventEmitter {
             this.client.connect(this.port, this.host, function() {
                 console.log('Connected to p2p');
 
-                self.client.on('data', (data) => {
-                    // put everything on a queue buffer and then process that according to the protocol
-                    self.current_buffer = concatenate(self.current_buffer, data);
-                });
-
                 self.emit('connected');
 
                 resolve(self.client);
             });
+
         });
     }
 
@@ -99,69 +262,41 @@ class EOSIOP2PClient extends EventEmitter {
         this.client = null;
     }
 
-
-    deserialize_message(array){
-        const sb = new Serialize.SerialBuffer({
-            textEncoder: new TextEncoder,
-            textDecoder: new TextDecoder,
-            array
-        });
-
-        const len = sb.getUint32();
-        const type = sb.get();
-        const msg_types = abi.variants[0].types;
-        const type_name = msg_types[type];
-
-        if (typeof type_name === 'undefined'){
-            throw new Error(`Unknown type "${type}"`);
-        }
-
-        return [type, type_name, types.get(type_name).deserialize(sb)];
-    }
-
     async send_message(msg, type){
         if (!this.client){
             this.error(`Not sending message because we do not have a client`);
             return;
         }
-        const sb = new Serialize.SerialBuffer({
-            textEncoder: new TextEncoder,
-            textDecoder: new TextDecoder
-        });
 
-        // put the message into a serialbuffer
         const msg_types = this.abi.variants[0].types;
-        types.get(msg_types[type]).serialize(sb, msg);
+        const sr = new stream.Readable({objectMode:true, read() {}});
+        sr.push([type, msg_types[type], msg]);
 
-        const len = sb.length;
-        // console.log(`${msg_types[type]} buffer is ${len} long`);
-
-        // Append length and msg type
-        const header = new Serialize.SerialBuffer({
-            textEncoder: new TextEncoder,
-            textDecoder: new TextDecoder
+        const write_stream = new EOSIOStreamSerializer({});
+        sr.pipe(write_stream).on('data', (d) => {
+            this.debug(`>>> `, d);
+            this.client.write(d);
         });
-        header.pushUint32(len + 1);
-        header.push(type); // message type
-
-        const buf = Buffer.concat([Buffer.from(header.asUint8Array()), Buffer.from(sb.asUint8Array())]);
-
-        this.debug(`>>> Type : ${msg_types[type]} (${type})`, msg);
-        this.client.write(buf);
     }
 
     async send_handshake(options = {}){
         const res = await fetch(`${this.api}/v1/chain/get_info`);
         let info = await res.json();
-        let num = parseInt(options.num);
-        if (isNaN(num)){
-            num = 0;
+        if (!options.msg || (!options.msg.head_id && !options.msg.last_irreversible_block_id)){
+            let num = parseInt(options.num);
+            if (isNaN(num)){
+                num = 0;
+            }
+            this.my_info = await this.get_prev_info(info, num);  // blocks in the past to put my state
+            info = this.my_info;
         }
-        this.my_info = await this.get_prev_info(info, num);  // blocks in the past to put my state
-        info = this.my_info;
+        else {
+            this.my_info = {...info, ...options.msg};
+        }
+
 
         let msg = {
-            "network_version": 1206,
+            "network_version": 1207,
             "chain_id": info.chain_id,
             "node_id": '0585cab37823404b8c82d6fcc66c4faf20b0f81b2483b2b0f186dd47a1230fdc',
             "key": 'PUB_K1_11111111111111111111111111111111149Mr2R',
@@ -183,28 +318,6 @@ class EOSIOP2PClient extends EventEmitter {
         }
 
         this.send_message(msg, 0);
-
-    }
-
-
-    process_queue(){
-        // read length of the first message
-        let current_length = 0;
-        for (let i=0;i<4;i++){
-            current_length |= this.current_buffer[i] << (i * 8);
-        }
-        current_length += 4;
-
-        if (current_length <= this.current_buffer.length){
-            // console.log(`Read queue ${current_length} from buffer ${current_buffer.length}`);
-
-            const msg_data = this.deserialize_message(this.current_buffer.slice(0, current_length));
-
-            this.debug_message(msg_data);
-            this.process_message(msg_data);
-
-            this.current_buffer = this.current_buffer.slice(current_length);
-        }
     }
 
     process_message([type, type_name, msg]){
@@ -225,4 +338,4 @@ class EOSIOP2PClient extends EventEmitter {
 
 
 
-module.exports = { EOSIOP2PClient };
+module.exports = { EOSIOStreamSerializer, EOSIOStreamDeserializer, EOSIOStreamTokeniser, EOSIOP2PClient };

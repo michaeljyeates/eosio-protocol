@@ -1,6 +1,7 @@
 
-const {EOSIOP2PClient} = require('./client');
+const { EOSIOStreamDeserializer, EOSIOStreamTokeniser, EOSIOP2PClient } = require('./client');
 const {sleep} = require('./utils');
+const fetch = require('node-fetch');
 
 const pron = require('./pron');
 const config = require('./node-config');
@@ -91,17 +92,30 @@ speed           : ${(blocks_per_ns * ns_divisor).toFixed(10)} blocks/s
     async run(debug = false){
         this.kill_timer = setTimeout(this.kill.bind(this), this.block_timeout);
 
-        const num = 500;
+        const num = 5000;
 
         const p2p = new EOSIOP2PClient({...this.node, ...{debug}});
-        p2p.on('signed_block', this.on_signed_block.bind(this));
-        p2p.on('message', this.on_message.bind(this));
-        p2p.on('net_error', this.on_error.bind(this));
+        // p2p.on('signed_block', this.on_signed_block.bind(this));
+        // p2p.on('message', this.on_message.bind(this));
+        // p2p.on('net_error', this.on_error.bind(this));
 
         try {
-            await p2p.connect();
-            await sleep(5000);
+            const client = await p2p.connect();
+            // client.pipe(process.stdout);
+            client
+                .pipe(new EOSIOStreamTokeniser({}))
+                .pipe(new EOSIOStreamDeserializer({}))
+                .on('data', (obj) => {
+                    if (obj[0] === 7){
+                        // console.log(`Received block `);
+                        this.on_signed_block(obj[2]);
+                    }
+                });
+
             await p2p.send_handshake({msg: {p2p_address: `dreamghost::${pron[0]} - a6f45b4`}, num});
+
+            // get 500 blocks before lib
+            await p2p.send_message({start_block: p2p.my_info.last_irreversible_block_num, end_block: p2p.my_info.last_irreversible_block_num + num}, 6);
         }
         catch (e){
             console.error(e);
