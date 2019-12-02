@@ -5,176 +5,14 @@ const fetch = require('node-fetch');
 const EventEmitter = require('events');
 const stream = require('stream');
 
-const {concatenate} = require('./utils');
+const {concatenate} = require('../includes/utils');
 const {abi, types} = require('./net-protocol');
 
-class EOSIOStreamSerializer extends stream.Transform {
-    constructor(options){
-        super({writableObjectMode:true, readableObjectMode:true});
-    }
 
-    _transform(data, encoding, callback){
-        try {
-            // console.log(`transform`, data);
-            const msg = this.serialize_message(data);
+const EOSIOStreamSerializer = require('./stream/serializer');
+const EOSIOStreamDeserializer = require('./stream/deserializer');
+const EOSIOStreamTokenizer = require('./stream/tokenizer');
 
-            if (msg){
-                this.push(msg);
-            }
-
-            callback();
-        }
-        catch (e){
-            this.destroy(`Failed to serialize`);
-            console.error(e);
-            callback(`Failed to serialize`);
-        }
-    }
-
-    serialize_message([type, type_name, data]){
-
-        const sb = new Serialize.SerialBuffer({
-            textEncoder: new TextEncoder,
-            textDecoder: new TextDecoder
-        });
-
-        // put the message into a serialbuffer
-        const msg_types = abi.variants[0].types;
-        types.get(msg_types[type]).serialize(sb, data);
-
-        const len = sb.length;
-        // console.log(`${msg_types[type]} buffer is ${len} long`);
-
-        // Append length and msg type
-        const header = new Serialize.SerialBuffer({
-            textEncoder: new TextEncoder,
-            textDecoder: new TextDecoder
-        });
-        header.pushUint32(len + 1);
-        header.push(type); // message type
-
-        const buf = Buffer.concat([Buffer.from(header.asUint8Array()), Buffer.from(sb.asUint8Array())]);
-
-        return buf;
-    }
-}
-
-class EOSIOStreamDeserializer extends stream.Transform {
-    constructor(options){
-        super({readableObjectMode:true});
-    }
-
-    _transform(data, encoding, callback){
-        try {
-            const msg = this.deserialize_message(data);
-
-            if (msg){
-                this.push(msg);
-            }
-
-            callback();
-        }
-        catch (e){
-            this.destroy(`Failed to deserialize`);
-            console.error(e);
-            callback(`Failed to deserialize`);
-        }
-    }
-
-    deserialize_message(array){
-        const sb = new Serialize.SerialBuffer({
-            textEncoder: new TextEncoder,
-            textDecoder: new TextDecoder,
-            array
-        });
-
-        const len = sb.getUint32();
-        const type = sb.get();
-        const msg_types = abi.variants[0].types;
-        const type_name = msg_types[type];
-
-        if (typeof type_name === 'undefined'){
-            throw new Error(`Unknown message type "${type}" while deserializing`);
-        }
-
-        return [type, type_name, types.get(type_name).deserialize(sb)];
-    }
-
-}
-
-
-class EOSIOStreamTokeniser extends stream.Transform {
-    constructor(options){
-        // options.objectMode = true;
-        options.highWaterMark = 65000000000;
-        super(options);
-
-        this.array = new Uint8Array();
-        this.buffer = [];
-        this.readable = false;
-        this.writable = true;
-    }
-
-    _transform(data, encoding, callback){
-        // console.log(data);
-        if (encoding !== 'buffer'){
-            console.log('Received UTF8');
-            // throw new Error(`Incorrect buffer encoding ${encoding}`);
-        }
-
-        this.array = concatenate(this.array, data);
-
-        // console.log(`Stream write`, this.array.length);
-
-        let msg_data;
-        while (msg_data = this.process()){
-            this.buffer.push(msg_data);
-        }
-
-        let item;
-        while (item = this.buffer.shift()){
-            this.push(item);
-        }
-
-        this.readable = (this.buffer.length > 0);
-
-        this.writable = true;
-
-        callback();
-
-        return false;
-    }
-
-    _flush(callback){
-        callback();
-    }
-
-    process(){
-        // read length of the first message
-        let current_length = 0;
-        for (let i=0;i<4;i++){
-            current_length |= this.array[i] << (i * 8);
-        }
-        current_length += 4;
-
-        let msg_data = null;
-
-        // console.log(`Processing with length ${current_length}`);
-
-        if (current_length <= this.array.length){
-            // console.log(`Read queue ${current_length} from buffer ${this.array.length}`);
-
-            // console.log(this.deserialize_message(this.array.slice(0, current_length)));
-            msg_data = this.array.slice(0, current_length);
-
-            this.array = this.array.slice(current_length);
-            // console.log(`Length now ${this.array.length}`);
-        }
-
-        return msg_data;
-    }
-
-}
 
 
 class EOSIOP2PClient extends EventEmitter {
@@ -338,4 +176,4 @@ class EOSIOP2PClient extends EventEmitter {
 
 
 
-module.exports = { EOSIOStreamSerializer, EOSIOStreamDeserializer, EOSIOStreamTokeniser, EOSIOP2PClient };
+module.exports = { EOSIOStreamSerializer, EOSIOStreamDeserializer, EOSIOStreamTokenizer, EOSIOP2PClient };

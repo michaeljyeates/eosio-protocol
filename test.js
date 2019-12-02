@@ -1,9 +1,9 @@
 
-const { EOSIOStreamDeserializer, EOSIOStreamTokeniser, EOSIOP2PClient } = require('./client');
-const {sleep} = require('./utils');
+const { EOSIOStreamDeserializer, EOSIOStreamTokenizer, EOSIOP2PClient } = require('./protocol/client');
+const {sleep} = require('./includes/utils');
 const fetch = require('node-fetch');
 
-const pron = require('./pron');
+const pron = require('./includes/pron');
 const config = require('./node-config');
 
 
@@ -103,7 +103,7 @@ speed           : ${(blocks_per_ns * ns_divisor).toFixed(10)} blocks/s
             const client = await p2p.connect();
             // client.pipe(process.stdout);
             client
-                .pipe(new EOSIOStreamTokeniser({}))
+                .pipe(new EOSIOStreamTokenizer({}))
                 .pipe(new EOSIOStreamDeserializer({}))
                 .on('data', (obj) => {
                     if (obj[0] === 7){
