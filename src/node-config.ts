@@ -4,6 +4,14 @@ export module NodeConfig {
             // haproxy
             bp_name: 'eosdacserval',
             name: 'eosDAC',
+            host: '127.0.0.1',
+            port: 1337,
+            api: 'https://jungle.eosdac.io'
+        },
+        {
+            // haproxy
+            bp_name: 'eosdacserval',
+            name: 'eosDAC',
             host: 'jungle.eosdac.io',
             port: 9666,
             api: 'https://jungle.eosdac.io'
