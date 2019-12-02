@@ -9,9 +9,14 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@types/node": "^12.12.14",
+    "@types/text-encoding": "0.0.35",
+    "awesome-typescript-loader": "^5.2.1",
+    "deps": "^0.1.2",
     "eosjs": "^20.0.0",
     "net": "^1.0.2",
     "node-fetch": "^2.6.0",
+    "source-map-loader": "^0.2.4",
     "stream": "0.0.2"
   }
 }

@@ -1,21 +1,22 @@
-
-const {Serialize} = require('eosjs');
-const net = require('net');
+import * as net from 'net';
 const fetch = require('node-fetch');
-const EventEmitter = require('events');
-const stream = require('stream');
+import * as EventEmitter from 'events';
+import * as stream from 'stream';
 
-const {concatenate} = require('../includes/utils');
-const {abi, types} = require('./net-protocol');
-
-
-const EOSIOStreamSerializer = require('./stream/serializer');
-const EOSIOStreamDeserializer = require('./stream/deserializer');
-const EOSIOStreamTokenizer = require('./stream/tokenizer');
+import { NetProtocol } from './net-protocol';
+import { EOSIOStreamSerializer } from './stream/serializer';
 
 
+export class EOSIOP2PClient extends EventEmitter {
+    private host: string;
+    private current_buffer: Uint8Array;
+    private port: number;
+    private api: string;
+    public my_info: any;
+    private client: any;
+    private types: any;
+    private _debug: boolean;
 
-class EOSIOP2PClient extends EventEmitter {
     constructor({host, port, api, debug}){
         super();
         this.host = host;
@@ -23,9 +24,8 @@ class EOSIOP2PClient extends EventEmitter {
         this.api = api;
         this.current_buffer = new Uint8Array();
         this.my_info;  // state of current node
-        this.client;
-        this.abi = abi;
-        this.types = types;
+        this.client = null;
+        this.types = NetProtocol.types;
         this._debug = debug;
     }
 
@@ -35,8 +35,8 @@ class EOSIOP2PClient extends EventEmitter {
         }
     }
 
-    error(msg){
-        console.error(msg);
+    error(...msg){
+        console.error(...msg);
     }
 
     debug_message([type, type_name, data]){
@@ -74,7 +74,7 @@ class EOSIOP2PClient extends EventEmitter {
         return info;
     }
 
-    async connect(){
+    async connect(): Promise<stream.Stream> {
         return new Promise((resolve, reject) => {
             this.client = new net.Socket();
 
@@ -106,7 +106,7 @@ class EOSIOP2PClient extends EventEmitter {
             return;
         }
 
-        const msg_types = this.abi.variants[0].types;
+        const msg_types = NetProtocol.abi.variants[0].types;
         const sr = new stream.Readable({objectMode:true, read() {}});
         sr.push([type, msg_types[type], msg]);
 
@@ -117,7 +117,7 @@ class EOSIOP2PClient extends EventEmitter {
         });
     }
 
-    async send_handshake(options = {}){
+    async send_handshake(options: any = {}){
         const res = await fetch(`${this.api}/v1/chain/get_info`);
         let info = await res.json();
         if (!options.msg || (!options.msg.head_id && !options.msg.last_irreversible_block_id)){
@@ -176,4 +176,3 @@ class EOSIOP2PClient extends EventEmitter {
 
 
 
-module.exports = { EOSIOStreamSerializer, EOSIOStreamDeserializer, EOSIOStreamTokenizer, EOSIOP2PClient };

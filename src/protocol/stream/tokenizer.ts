@@ -1,8 +1,11 @@
 
-const stream = require('stream');
-const {concatenate} = require('../../includes/utils');
+import * as stream from 'stream';
+import {concatenate} from '../../includes/utils';
 
-class EOSIOStreamTokenizer extends stream.Transform {
+export class EOSIOStreamTokenizer extends stream.Transform {
+    private array: Uint8Array;
+    private buffer: any[];
+
     constructor(options){
         // options.objectMode = true;
         super(options);
@@ -68,5 +71,4 @@ class EOSIOStreamTokenizer extends stream.Transform {
 
 }
 
-module.exports = EOSIOStreamTokenizer;
 

@@ -1,16 +1,28 @@
 
-const { EOSIOStreamDeserializer, EOSIOStreamTokenizer, EOSIOP2PClient } = require('./protocol/client');
-const {sleep} = require('./includes/utils');
+import { EOSIOStreamDeserializer } from './protocol/stream/deserializer';
+import { EOSIOStreamTokenizer } from './protocol/stream/tokenizer';
 
-const pron = require('./includes/pron');
-const config = require('./node-config');
+import { EOSIOP2PClient } from './protocol/client';
+import {sleep}  from './includes/utils';
 
+import * as pron from './includes/pron';
+import * as config from './node-config';
+import * as stream from 'stream';
 
 
 class TestRunner {
+    protected last_block_time: bigint;
+    protected block_count: number;
+    protected node: any;
+    protected killed_reason: string;
+    protected killed_detail: string;
+    protected killed: boolean;
+    protected latencies: number[];
+    protected block_timeout: number;
+
     constructor(node){
         this.node = node;
-        this.last_block_time = 0;
+        this.last_block_time = BigInt(0);
         this.block_count = 0;
         this.killed = false;
         this.killed_reason = '';
@@ -25,6 +37,8 @@ class TestRunner {
 }
 
 class BlockTransmissionTestRunner extends TestRunner {
+    private kill_timer: ReturnType<typeof setTimeout>;
+
     constructor(node){
         super(node);
     }
@@ -64,7 +78,7 @@ class BlockTransmissionTestRunner extends TestRunner {
         const p2p = new EOSIOP2PClient({...this.node, ...{debug}});
 
         try {
-            const client = await p2p.connect();
+            const client: stream.Stream = await p2p.connect();
             // client.pipe(process.stdout);
             client
                 .pipe(new EOSIOStreamTokenizer({}))
@@ -104,7 +118,7 @@ class BlockTransmissionTestRunner extends TestRunner {
 
         let avg = 0;
         let sum = 0;
-        let sum_b = 0n;
+        let sum_b = BigInt(0);
         if (raw.latencies.length > 0){
             sum = raw.latencies.reduce((previous, current) => current += previous);
             sum_b = BigInt(sum_b);
@@ -115,7 +129,7 @@ class BlockTransmissionTestRunner extends TestRunner {
         const total_time = sum / ns_divisor;
         const blocks_per_ns = raw.block_count / sum;
         let speed = (blocks_per_ns * ns_divisor).toFixed(10);
-        if (isNaN(speed)){
+        if (speed === 'NaN'){
             speed = '';
         }
 
@@ -167,7 +181,7 @@ class BlockTransmissionTestRunner extends TestRunner {
 
 const run_tests = async (nodes, network) => {
     for (let n=0;n<nodes[network].length;n++){
-        const node = nodes[network][n]
+        const node = nodes[network][n];
         console.log(`Running tests for ${node.name} (${node.host}:${node.port})`);
 
         const runner = new BlockTransmissionTestRunner(node);

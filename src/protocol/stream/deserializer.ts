@@ -1,9 +1,10 @@
 
-const stream = require('stream');
+import * as stream from 'stream';
 const {Serialize} = require('eosjs');
-const {abi, types} = require('../net-protocol');
+import {NetProtocol} from '../net-protocol';
+const { TextDecoder, TextEncoder } = require('util');
 
-class EOSIOStreamDeserializer extends stream.Transform {
+export class EOSIOStreamDeserializer extends stream.Transform {
     constructor(options){
         super({readableObjectMode:true});
     }
@@ -19,7 +20,7 @@ class EOSIOStreamDeserializer extends stream.Transform {
             callback();
         }
         catch (e){
-            this.destroy(`Failed to deserialize`);
+            this.destroy(new Error(`Failed to deserialize`));
             console.error(e);
             callback(`Failed to deserialize`);
         }
@@ -27,24 +28,23 @@ class EOSIOStreamDeserializer extends stream.Transform {
 
     deserialize_message(array){
         const sb = new Serialize.SerialBuffer({
-            textEncoder: new TextEncoder,
-            textDecoder: new TextDecoder,
+            textEncoder: new TextEncoder(),
+            textDecoder: new TextDecoder(),
             array
         });
 
         const len = sb.getUint32();
         const type = sb.get();
-        const msg_types = abi.variants[0].types;
+        const msg_types = NetProtocol.variant_types();
         const type_name = msg_types[type];
 
         if (typeof type_name === 'undefined'){
             throw new Error(`Unknown message type "${type}" while deserializing`);
         }
 
-        return [type, type_name, types.get(type_name).deserialize(sb)];
+        return [type, type_name, NetProtocol.types.get(type_name).deserialize(sb)];
     }
 
 }
 
 
-module.exports = EOSIOStreamDeserializer;
