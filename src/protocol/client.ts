@@ -4,6 +4,7 @@ import * as EventEmitter from 'events';
 import * as stream from 'stream';
 
 import { NetProtocol } from './net-protocol';
+import { NetMessage, HandshakeMessage } from './messages';
 import { EOSIOStreamSerializer } from './stream/serializer';
 
 
@@ -63,7 +64,7 @@ export class EOSIOP2PClient extends EventEmitter {
         return info.id;
     }
 
-    async get_prev_info(info, num=1000){
+    async get_prev_info(info: any, num=1000){
         if (num > 0){
             info.head_block_num -= num;
             info.last_irreversible_block_num -= num;
@@ -100,13 +101,13 @@ export class EOSIOP2PClient extends EventEmitter {
         this.client = null;
     }
 
-    async send_message(msg, type){
+    async send_message(msg: NetMessage, type: number){
         if (!this.client){
             this.error(`Not sending message because we do not have a client`);
             return;
         }
 
-        const msg_types = NetProtocol.abi.variants[0].types;
+        const msg_types = NetProtocol.variant_types();
         const sr = new stream.Readable({objectMode:true, read() {}});
         sr.push([type, msg_types[type], msg]);
 
@@ -133,7 +134,8 @@ export class EOSIOP2PClient extends EventEmitter {
         }
 
 
-        let msg = {
+        let msg = new HandshakeMessage();
+        msg.copy({
             "network_version": 1206,
             "chain_id": info.chain_id,
             "node_id": '0585cab37823404b8c82d6fcc66c4faf20b0f81b2483b2b0f186dd47a1230fdc',
@@ -149,28 +151,28 @@ export class EOSIOP2PClient extends EventEmitter {
             "os": 'linux',
             "agent": 'Dream Ghost',
             "generation": 1
-        };
+        });
 
         if (options.msg){
-            msg = {...msg, ...options.msg};
+            msg.copy(options.msg);
         }
 
         this.send_message(msg, 0);
     }
 
-    process_message([type, type_name, msg]){
-        this.emit(type_name, msg);
-        this.emit('message', type, type_name, msg);
-
-        if (type === 4 && msg.known_blocks.mode === 2){ // notice_message sync lib
-            // request blocks from my lib to theirs
-            const req_msg = {
-                start_block: this.my_info.last_irreversible_block_num,
-                end_block: msg.known_trx.pending
-            };
-            this.send_message(req_msg, 6); //sync_request_message
-        }
-    }
+    // process_message([type, type_name, msg]){
+    //     this.emit(type_name, msg);
+    //     this.emit('message', type, type_name, msg);
+    //
+    //     if (type === 4 && msg.known_blocks.mode === 2){ // notice_message sync lib
+    //         // request blocks from my lib to theirs
+    //         const req_msg = {
+    //             start_block: this.my_info.last_irreversible_block_num,
+    //             end_block: msg.known_trx.pending
+    //         };
+    //         this.send_message(req_msg, 6); //sync_request_message
+    //     }
+    // }
 
 }
 

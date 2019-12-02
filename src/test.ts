@@ -1,12 +1,13 @@
 
 import { EOSIOStreamDeserializer } from './protocol/stream/deserializer';
 import { EOSIOStreamTokenizer } from './protocol/stream/tokenizer';
+import { SyncRequestMessage } from './protocol/messages';
 
 import { EOSIOP2PClient } from './protocol/client';
 import {sleep}  from './includes/utils';
 
 import * as pron from './includes/pron';
-import * as config from './node-config';
+import { NodeConfig } from './node-config';
 import * as stream from 'stream';
 
 
@@ -37,7 +38,7 @@ class TestRunner {
 }
 
 class BlockTransmissionTestRunner extends TestRunner {
-    private kill_timer: ReturnType<typeof setTimeout>;
+    private kill_timer: NodeJS.Timeout;
 
     constructor(node){
         super(node);
@@ -93,7 +94,9 @@ class BlockTransmissionTestRunner extends TestRunner {
             await p2p.send_handshake({msg: {p2p_address: `dreamghost::${pron[0]} - a6f45b4`}, num: num_blocks});
 
             // get 500 blocks before lib
-            await p2p.send_message({start_block: p2p.my_info.last_irreversible_block_num, end_block: p2p.my_info.last_irreversible_block_num + num_blocks}, 6);
+            const msg = new SyncRequestMessage();
+            msg.copy({start_block: p2p.my_info.last_irreversible_block_num, end_block: p2p.my_info.last_irreversible_block_num + num_blocks});
+            await p2p.send_message(msg, 6);
         }
         catch (e){
             console.error(e);
@@ -189,8 +192,8 @@ const run_tests = async (nodes, network) => {
     }
 };
 
-const network = 'jungle';
+const network = 'wax';
 const debug = false;
 
-run_tests(config, network);
+run_tests(NodeConfig, network);
 // setInterval(run_tests, 60*2*1000, [config, network]);
