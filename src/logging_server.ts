@@ -1,6 +1,6 @@
 
 /*
-Logging server - Connects to a source and a destination and will log all messages
+Logging proxy server - Logs all messages flowing between two peers
  */
 
 
@@ -39,6 +39,7 @@ const server = net.createServer(function(socket) {
         throw new Error('Only one connected client allowed');
     }
     connected_socket = socket;
+
     // send all data to the real server
     socket.pipe(client);
     // log any incoming messages
