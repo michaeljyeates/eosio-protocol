@@ -116,6 +116,13 @@ export class TimeMessage extends NetMessage {
 }
 
 export class NoticeMessage extends NetMessage {
+    static modes: string[] = [
+        'none',
+        'catch up',
+        'lib catch up',
+        'normal'
+    ];
+
     public known_trx: OrderedChecksum;
     public known_blocks: OrderedChecksum;
 }
