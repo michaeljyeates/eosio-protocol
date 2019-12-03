@@ -1,15 +1,15 @@
 
 import { EOSIOStreamDeserializer } from './protocol/stream/deserializer';
 import { EOSIOStreamTokenizer } from './protocol/stream/tokenizer';
-import {GoAwayMessage, HandshakeMessage, SyncRequestMessage} from './protocol/messages';
-
+import { EOSIOStreamConsoleDebugger } from "./protocol/stream/debugger";
 import { EOSIOP2PClientConnection } from './protocol/connection';
-import {sleep}  from './includes/utils';
+import { GoAwayMessage, HandshakeMessage, SyncRequestMessage } from './protocol/messages';
+
+import { sleep }  from './includes/utils';
 
 import * as pron from './includes/pron';
 import { NodeConfig } from './node-config';
 import * as stream from 'stream';
-import {EOSIOStreamConsoleDebugger} from "./protocol/stream/debugger";
 
 const fetch = require('node-fetch');
 
@@ -47,7 +47,7 @@ class TestRunner {
 
         let msg = new HandshakeMessage();
         msg.copy({
-            "network_version": 1207,
+            "network_version": 1206,
             "chain_id": '0000000000000000000000000000000000000000000000000000000000000000', // should be o
             "node_id": '0585cab37823404b8c82d6fcc66c4faf20b0f81b2483b2b0f186dd47a1230fdc',
             "key": 'PUB_K1_11111111111111111111111111111111149Mr2R',
@@ -68,7 +68,7 @@ class TestRunner {
             msg.copy(override);
         }
 
-        await this.p2p.send_message(msg, 0);
+        await this.p2p.send_message(msg);
     }
 }
 
@@ -167,7 +167,7 @@ class BlockTransmissionTestRunner extends TestRunner {
             const msg = new SyncRequestMessage();
             msg.start_block = prev_info.last_irreversible_block_num;
             msg.end_block = prev_info.last_irreversible_block_num + num_blocks;
-            await p2p.send_message(msg, 6);
+            await p2p.send_message(msg);
         }
         catch (e){}
 
