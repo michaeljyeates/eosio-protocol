@@ -12,6 +12,10 @@ import {EOSIOStreamTokenizer} from "./stream/tokenizer";
 import {EOSIOStreamDeserializer} from "./stream/deserializer";
 
 
+/*
+Node implementation (work in progress)
+ */
+
 export class EOSIOSharedState {
     public chain_id: string;
     public head_block_num: number;
@@ -84,31 +88,6 @@ export class EOSIOP2PClient extends EOSIOP2PClientConnection {
         return info;
     }
 
-    async connect(): Promise<stream.Stream> {
-        return new Promise((resolve, reject) => {
-            this.client = new net.Socket();
-
-            this.client.on('error', (e) => {
-                this.emit('net_error', e);
-                reject(e);
-            });
-            const self = this;
-            this.client.connect(this.port, this.host, function() {
-                console.log('Connected to p2p');
-
-                self.emit('connected');
-
-                resolve(self.client);
-            });
-
-        });
-    }
-
-    disconnect(): void {
-        this.client.end();
-        this.client.destroy();
-        this.client = null;
-    }
 
 }
 

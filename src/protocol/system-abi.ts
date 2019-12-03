@@ -1,5 +1,5 @@
 /*
-Copied from state history
+Copied from state history, needed for signed block and packed transaction deserialization
  */
 
 export module SystemABI {

@@ -11,6 +11,13 @@ import {
 } from "../messages";
 import {Serialize} from "eosjs/dist";
 
+
+/*
+Debugging stream
+
+Writable stream which takes the object output from EOSIOStreamDeserializer and logs it to the console in a compact format
+ */
+
 export class EOSIOStreamConsoleDebugger extends stream.Writable {
     private prefix: string;
 

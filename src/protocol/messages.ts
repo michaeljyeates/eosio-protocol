@@ -1,5 +1,6 @@
 /*
 Net protocol message types
+
    using net_message = static_variant<handshake_message,
                                       chain_size_message,
                                       go_away_message,

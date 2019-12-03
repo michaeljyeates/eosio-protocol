@@ -1,14 +1,14 @@
 import * as net from 'net';
-const fetch = require('node-fetch');
 import * as EventEmitter from 'events';
 import * as stream from 'stream';
 
-import { NetProtocol } from './net-protocol';
-import { NetMessage, HandshakeMessage } from './messages';
+import { NetMessage } from './messages';
 import { EOSIOStreamSerializer } from './stream/serializer';
-import { EOSIOStreamConsoleDebugger } from './stream/debugger';
-import {EOSIOStreamTokenizer} from "./stream/tokenizer";
-import {EOSIOStreamDeserializer} from "./stream/deserializer";
+
+/*
+Utility class for maintaining a single client connection, provides functionality for holding a connection and sending
+data to the TCP stream
+ */
 
 export class EOSIOP2PClientConnection extends EventEmitter {
     protected host: string;
@@ -60,7 +60,6 @@ export class EOSIOP2PClientConnection extends EventEmitter {
     }
 
     async send_message(msg: NetMessage) {
-        const msg_types = NetProtocol.variant_types();
         const sr = new stream.Readable({objectMode:true, read() {}});
         sr.push([msg.type, msg.type_name, msg]);
 

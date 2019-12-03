@@ -4,6 +4,13 @@ const {Serialize} = require('eosjs');
 const { TextDecoder, TextEncoder } = require('util');
 import { NetProtocol } from '../net-protocol';
 
+/*
+Serializing stream
+
+Receives objects representing net messages and serializes them into a binary format understandable by the EOSIO P2P
+protocol.  The output from this stream can be piped directly to the tcp socket.
+ */
+
 export class EOSIOStreamSerializer extends stream.Transform {
     constructor(options){
         super({writableObjectMode:true, readableObjectMode:true});

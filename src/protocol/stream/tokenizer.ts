@@ -2,6 +2,13 @@
 import * as stream from 'stream';
 const {concatenate} = require('../../includes/utils');
 
+/*
+Tokenising stream
+
+Receives fragmented data from the tcp socket and stores it until a complete message is in the buffer and then pushes
+the complete message
+ */
+
 export class EOSIOStreamTokenizer extends stream.Transform {
     private array: Uint8Array;
     private buffer: any[];

@@ -3,6 +3,10 @@ const {Serialize} = require('eosjs');
 
 import { SystemABI } from './system-abi';
 
+/*
+ABI for net messages, this plugs directly into eosjs
+ */
+
 
 export module NetProtocol {
     export var abi: any;

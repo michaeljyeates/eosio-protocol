@@ -4,6 +4,12 @@ const {Serialize} = require('eosjs');
 import {NetProtocol} from '../net-protocol';
 const { TextDecoder, TextEncoder } = require('util');
 
+/*
+Deserializing stream
+
+Transform stream which reads tokenised binary messages from the EOSIOStreamTokenizer
+ */
+
 export class EOSIOStreamDeserializer extends stream.Transform {
     constructor(options){
         super({readableObjectMode:true, highWaterMark: 1024 * 1024});
