@@ -3,7 +3,7 @@
         "sourceMap": true,
         "outDir": "./dist",
         "allowJs": true,
-        "lib": ["es2018"],
+        "lib": ["es2018", "dom"],
         "module": "commonjs",
         "target": "es2018"
     },
