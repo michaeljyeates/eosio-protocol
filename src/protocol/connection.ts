@@ -59,10 +59,10 @@ export class EOSIOP2PClientConnection extends EventEmitter {
         this.client = null;
     }
 
-    async send_message(msg: NetMessage, type: number) {
+    async send_message(msg: NetMessage) {
         const msg_types = NetProtocol.variant_types();
         const sr = new stream.Readable({objectMode:true, read() {}});
-        sr.push([type, msg_types[type], msg]);
+        sr.push([msg.type, msg.type_name, msg]);
 
         const write_stream = new EOSIOStreamSerializer({});
         sr.pipe(write_stream).on('data', (d) => {

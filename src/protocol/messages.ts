@@ -18,6 +18,9 @@ class OrderedChecksum {
 }
 
 export class NetMessage {
+    public type_name = '';
+    public type = -1;
+
     constructor(){}
 
     copy(data: object){
@@ -63,6 +66,9 @@ export class NetMessage {
 }
 
 export class HandshakeMessage extends NetMessage {
+    public type_name = 'handshake_message';
+    public type = 0;
+
     public network_version: number;
     public chain_id: string;
     public node_id: string;
@@ -82,6 +88,9 @@ export class HandshakeMessage extends NetMessage {
 
 
 export class ChainSizeMessage extends NetMessage {
+    public type_name = 'chain_size_message';
+    public type = 1;
+
     public last_irreversible_block_num: number;
     public last_irreversible_block_id: string;
     public head_num: number;
@@ -89,6 +98,9 @@ export class ChainSizeMessage extends NetMessage {
 }
 
 export class GoAwayMessage extends NetMessage {
+    public type_name = 'go_away_message';
+    public type = 2;
+
     static reasons: string[] = [
         'no reason',
         'self connect',
@@ -109,6 +121,9 @@ export class GoAwayMessage extends NetMessage {
 }
 
 export class TimeMessage extends NetMessage {
+    public type_name = 'time_message';
+    public type = 3;
+
     public org: BigInt;
     public rec: BigInt;
     public xmt: BigInt;
@@ -116,6 +131,9 @@ export class TimeMessage extends NetMessage {
 }
 
 export class NoticeMessage extends NetMessage {
+    public type_name = 'notice_message';
+    public type = 4;
+
     static modes: string[] = [
         'none',
         'catch up',
@@ -128,16 +146,25 @@ export class NoticeMessage extends NetMessage {
 }
 
 export class RequestMessage extends NetMessage {
+    public type_name = 'request_message';
+    public type = 5;
+
     public req_trx: OrderedChecksum;
     public req_blocks: OrderedChecksum;
 }
 
 export class SyncRequestMessage extends NetMessage {
+    public type_name = 'sync_request_message';
+    public type = 6;
+
     public start_block: number;
     public end_block: number;
 }
 
 export class SignedBlockMessage extends NetMessage {
+    public type_name = 'signed_block';
+    public type = 7;
+
     public timestamp: string;
     public producer: string;
     public confirmed: number;
@@ -153,6 +180,9 @@ export class SignedBlockMessage extends NetMessage {
 }
 
 export class PackedTransactionMessage extends NetMessage {
+    public type_name = 'packed_transaction';
+    public type = 8;
+
     public signatures: string[];
     public compression: boolean;
     public packed_context_free_data: string;
