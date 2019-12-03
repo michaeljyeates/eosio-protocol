@@ -119,7 +119,8 @@ class BlockTransmissionTestRunner extends TestRunner {
             const res = await fetch(`${this.node.api}/v1/chain/get_info`);
             let info = await res.json();
 
-            const prev_info = await this.get_prev_info(info, num_blocks);
+            // const prev_info = await this.get_prev_info(info, num_blocks);
+            const prev_info = info;
 
             const override = {
                 chain_id: info.chain_id,
@@ -132,9 +133,10 @@ class BlockTransmissionTestRunner extends TestRunner {
             await this.send_handshake(override);
 
             // get num blocks before lib
-            const msg = new SyncRequestMessage();
-            msg.copy({start_block: prev_info.last_irreversible_block_num, end_block: prev_info.last_irreversible_block_num + num_blocks});
-            await p2p.send_message(msg, 6);
+            // const msg = new SyncRequestMessage();
+            // msg.copy({start_block: prev_info.last_irreversible_block_num, end_block: prev_info.last_irreversible_block_num + num_blocks});
+            // msg.copy({start_block: info.last_irreversible_block_num, end_block: prev_info.last_irreversible_block_num + num_blocks});
+            // await p2p.send_message(msg, 6);
         }
         catch (e){
 
@@ -244,7 +246,7 @@ class BlockTransmissionTestRunner extends TestRunner {
 
         let msg = new HandshakeMessage();
         msg.copy({
-            "network_version": 1206,
+            "network_version": 1207,
             "chain_id": '0000000000000000000000000000000000000000000000000000000000000000', // should be o
             "node_id": '0585cab37823404b8c82d6fcc66c4faf20b0f81b2483b2b0f186dd47a1230fdc',
             "key": 'PUB_K1_11111111111111111111111111111111149Mr2R',
@@ -281,7 +283,7 @@ const run_tests = async (nodes: any, network: string) => {
 };
 
 const network = 'jungle';
-const debug = false;
+const debug = true;
 
 run_tests(NodeConfig, network);
 // setInterval(run_tests, 60*2*1000, [config, network]);

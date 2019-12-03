@@ -52,6 +52,11 @@ export class NetMessage {
             case 7:
                 return new SignedBlockMessage();
                 break;
+            case 8:
+                return new PackedTransactionMessage();
+                break;
+            default:
+                throw new Error(`Unknown message type ${type}`);
         }
     }
 
@@ -141,16 +146,8 @@ export class SignedBlockMessage extends NetMessage {
 }
 
 export class PackedTransactionMessage extends NetMessage {
-    public timestamp: string;
-    public producer: string;
-    public confirmed: number;
-    public previous: string;
-    public transaction_mroot: string;
-    public action_mroot: string;
-    public schedule_version: number;
-    public new_producers: any[];
-    public header_extensions: any[];
-    public producer_signature: string;
-    public transactions: any[];
-    public block_extensions: any[];
+    public signatures: string[];
+    public compression: boolean;
+    public packed_context_free_data: string;
+    public packed_trx: string;
 }

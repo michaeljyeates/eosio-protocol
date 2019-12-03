@@ -1,4 +1,4 @@
-
+const sha256 = require('sha256');
 import * as stream from 'stream';
 import {
     GoAwayMessage,
@@ -7,8 +7,9 @@ import {
     NoticeMessage,
     RequestMessage,
     SyncRequestMessage,
-    SignedBlockMessage
+    SignedBlockMessage, PackedTransactionMessage
 } from "../messages";
+import {Serialize} from "eosjs/dist";
 
 export class EOSIOStreamConsoleDebugger extends stream.Writable {
     private prefix: string;
@@ -27,12 +28,6 @@ export class EOSIOStreamConsoleDebugger extends stream.Writable {
         switch (chunk[1]){
             case 'handshake_message':
                 console.log(`${prefix} handshake from ${chunk[2].p2p_address}`);
-                break;
-            case 'signed_block':
-                const sb_msg = <SignedBlockMessage>msg;
-                const block_num_hex = sb_msg.previous.substr(0, 8); // first 64 bits
-                const block_num = parseInt(block_num_hex, 16) + 1;
-                console.log(`${prefix} #${block_num} signed by ${sb_msg.producer}`);
                 break;
             case 'time_message':
                 const t_msg = <TimeMessage>msg;
@@ -55,8 +50,20 @@ export class EOSIOStreamConsoleDebugger extends stream.Writable {
                 const sr_msg = <SyncRequestMessage>msg;
                 console.log(`${prefix} sync request message`);
                 break;
+            case 'signed_block':
+                const sb_msg = <SignedBlockMessage>msg;
+                const block_num_hex = sb_msg.previous.substr(0, 8); // first 64 bits
+                const block_num = parseInt(block_num_hex, 16) + 1;
+                console.log(`${prefix} #${block_num} signed by ${sb_msg.producer}`);
+                break;
+            case 'packed_transaction':
+                const pt_msg = <PackedTransactionMessage>msg;
+                const trx_bin = Serialize.hexToUint8Array(pt_msg.packed_trx);
+                const trx_id = sha256(trx_bin);
+                console.log(`${prefix} Transaction ${trx_id}`);
+                break;
             default:
-                // console.log('Unknown chunk', chunk);
+                console.log('Unknown chunk', chunk);
                 break;
         }
 
