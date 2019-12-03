@@ -23,6 +23,7 @@ class TestRunner {
     protected killed: boolean;
     protected latencies: number[];
     protected block_timeout: number;
+    protected p2p: EOSIOP2PClientConnection;
 
     constructor(node){
         this.node = node;
@@ -33,16 +34,46 @@ class TestRunner {
         this.killed_detail = '';
         this.latencies = [];
         this.block_timeout = 10000;
+
+        const p2p = new EOSIOP2PClientConnection({...this.node, ...{debug}});
+        this.p2p = p2p;
     }
 
     run(debug = false){
         console.log(`Test runner doesnt override run`);
     }
+
+    protected async send_handshake(override) {
+
+        let msg = new HandshakeMessage();
+        msg.copy({
+            "network_version": 1207,
+            "chain_id": '0000000000000000000000000000000000000000000000000000000000000000', // should be o
+            "node_id": '0585cab37823404b8c82d6fcc66c4faf20b0f81b2483b2b0f186dd47a1230fdc',
+            "key": 'PUB_K1_11111111111111111111111111111111149Mr2R',
+            "time": '1574986199433946000',
+            "token": '0000000000000000000000000000000000000000000000000000000000000000',
+            "sig": 'SIG_K1_111111111111111111111111111111111111111111111111111111111111111116uk5ne',
+            "p2p_address": `eosdac-p2p-client:9876 - a6f45b4`,
+            "last_irreversible_block_num": 0,
+            "last_irreversible_block_id": '0000000000000000000000000000000000000000000000000000000000000000',
+            "head_num": 0,
+            "head_id": '0000000000000000000000000000000000000000000000000000000000000000',
+            "os": 'linux',
+            "agent": 'Dream Ghost',
+            "generation": 1
+        });
+
+        if (override){
+            msg.copy(override);
+        }
+
+        await this.p2p.send_message(msg, 0);
+    }
 }
 
 class BlockTransmissionTestRunner extends TestRunner {
     private kill_timer: NodeJS.Timeout;
-    private p2p: EOSIOP2PClientConnection;
 
     constructor(node){
         super(node);
@@ -81,8 +112,8 @@ class BlockTransmissionTestRunner extends TestRunner {
 
         const num_blocks = 5000;
 
-        const p2p = new EOSIOP2PClientConnection({...this.node, ...{debug}});
-        this.p2p = p2p;
+        const p2p = this.p2p;
+
         p2p.on('net_error', (e) => {
             this.killed = true;
             this.killed_reason = 'net_error';
@@ -134,7 +165,8 @@ class BlockTransmissionTestRunner extends TestRunner {
 
             // get num blocks before lib
             const msg = new SyncRequestMessage();
-            msg.copy({start_block: prev_info.last_irreversible_block_num, end_block: prev_info.last_irreversible_block_num + num_blocks});
+            msg.start_block = prev_info.last_irreversible_block_num;
+            msg.end_block = prev_info.last_irreversible_block_num + num_blocks;
             await p2p.send_message(msg, 6);
         }
         catch (e){}
@@ -239,33 +271,6 @@ class BlockTransmissionTestRunner extends TestRunner {
         this.killed_detail = 'Timed out while receiving blocks';
     }
 
-    private async send_handshake(override) {
-
-        let msg = new HandshakeMessage();
-        msg.copy({
-            "network_version": 1207,
-            "chain_id": '0000000000000000000000000000000000000000000000000000000000000000', // should be o
-            "node_id": '0585cab37823404b8c82d6fcc66c4faf20b0f81b2483b2b0f186dd47a1230fdc',
-            "key": 'PUB_K1_11111111111111111111111111111111149Mr2R',
-            "time": '1574986199433946000',
-            "token": '0000000000000000000000000000000000000000000000000000000000000000',
-            "sig": 'SIG_K1_111111111111111111111111111111111111111111111111111111111111111116uk5ne',
-            "p2p_address": `eosdac-p2p-client:9876 - a6f45b4`,
-            "last_irreversible_block_num": 0,
-            "last_irreversible_block_id": '0000000000000000000000000000000000000000000000000000000000000000',
-            "head_num": 0,
-            "head_id": '0000000000000000000000000000000000000000000000000000000000000000',
-            "os": 'linux',
-            "agent": 'Dream Ghost',
-            "generation": 1
-        });
-
-        if (override){
-            msg.copy(override);
-        }
-
-        await this.p2p.send_message(msg, 0);
-    }
 }
 
 
