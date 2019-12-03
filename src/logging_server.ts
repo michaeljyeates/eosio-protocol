@@ -8,47 +8,70 @@ const {EOSIOStreamTokenizer} = require("./protocol/stream/tokenizer");
 const {EOSIOStreamDeserializer}  = require("./protocol/stream/deserializer");
 const {EOSIOStreamConsoleDebugger}  = require("./protocol/stream/debugger");
 
-const net = require('net');
+import * as net from 'net';
 
+
+// the target nodeos server
+const target = {
+    host: 'jungle.eosdac.io',
+    port: 9666
+};
+// the host and port that this server listens on
 const source = {
     host: '127.0.0.1',
     port: 1337
 };
 
-const dest = {
-    host: 'jungle.eosdac.io',
-    port: 9666
-};
 
 
-const client = new net.Socket();
-// Log outgoing messages
-client
-    .pipe(new EOSIOStreamTokenizer({}))
-    .pipe(new EOSIOStreamDeserializer({}))
-    .pipe(new EOSIOStreamConsoleDebugger({prefix: '<<<'}));
 
-client.connect(dest.port, dest.host, function() {
-    console.log('Connected to p2p destination');
-});
+class Peer {
+    readonly socket: net.Socket;
+    readonly target: net.Socket;
 
+    constructor(client_socket: net.Socket){
+        this.socket = client_socket;
 
-let connected_socket = null;
-const server = net.createServer(function(socket) {
-    if (connected_socket){
-        throw new Error('Only one connected client allowed');
+        // connect to upstream server
+        this.target = new net.Socket();
+        // send all data to the target server
+        client_socket.pipe(this.target);
+
+        // Log received messages
+        client_socket
+            .pipe(new EOSIOStreamTokenizer({}))
+            .pipe(new EOSIOStreamDeserializer({}))
+            .pipe(new EOSIOStreamConsoleDebugger({prefix: `<<< ${client_socket.remoteAddress}`}));
+
+        this.target.connect(target.port, target.host, () => {
+            console.log('Connected to nodeos target');
+
+            // Send all data from our target to
+            this.target.pipe(client_socket);
+
+            // log outgoing messages
+            this.target
+                .pipe(new EOSIOStreamTokenizer({}))
+                .pipe(new EOSIOStreamDeserializer({}))
+                .pipe(new EOSIOStreamConsoleDebugger({prefix: `>>> ${client_socket.remoteAddress}`}));
+        });
     }
-    connected_socket = socket;
+}
 
-    // send all data to the real server
-    socket.pipe(client);
-    // log any incoming messages
-    socket
-        .pipe(new EOSIOStreamTokenizer({}))
-        .pipe(new EOSIOStreamDeserializer({}))
-        .pipe(new EOSIOStreamConsoleDebugger({prefix: '>>>'}));
 
-    client.pipe(connected_socket);
+
+
+
+
+
+const peers: Peer[] = [];
+const server = net.createServer(function(socket: net.Socket) {
+    console.log(`Connection received from ${socket.remoteAddress}`);
+
+    const peer = new Peer(socket);
+    peers.push(peer);
+
+    console.log(`Total peers : ${peers.length}`);
 });
 
-server.listen(1337, '127.0.0.1');
+server.listen(source.port, source.host);
