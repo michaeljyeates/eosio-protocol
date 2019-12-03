@@ -40,7 +40,14 @@ export class EOSIOStreamConsoleDebugger extends stream.Writable {
                 break;
             case 'notice_message':
                 const n_msg = <NoticeMessage>msg;
-                console.log(`${prefix} notice message, lib : ${n_msg.known_trx.pending}, head ${n_msg.known_blocks.pending}`);
+                const notice_mode = NoticeMessage.modes[n_msg.known_blocks.mode];
+                // console.log(n_msg);
+                if (notice_mode === 'normal'){
+                    console.log(`${prefix} notice message, remote server is ${n_msg.known_blocks.pending} blocks ahead`);
+                }
+                else {
+                    console.log(`${prefix} ${notice_mode} notice message, lib : ${n_msg.known_trx.pending}, head ${n_msg.known_blocks.pending}`);
+                }
                 break;
             case 'request_message':
                 const r_msg = <RequestMessage>msg;
