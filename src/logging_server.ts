@@ -28,6 +28,7 @@ const source = {
 class Peer {
     readonly socket: net.Socket;
     readonly target: net.Socket;
+    private index: number;
 
     constructor(client_socket: net.Socket){
         this.socket = client_socket;
@@ -37,10 +38,11 @@ class Peer {
         this.target.on('error', (e) => {
             console.error(`TARGET SOCKET ERROR ${this.target.remoteAddress} - ${e.message}`);
             this.target.end();
+            // TODO : try to reconnect
         });
         client_socket.on('error', (e) => {
             console.error(`CLIENT SOCKET ERROR ${client_socket.remoteAddress} - ${e.message}`);
-            client_socket.end();
+            this.destroy();
         });
         // send all data to the target server
         client_socket.pipe(this.target);
@@ -64,6 +66,15 @@ class Peer {
                 .pipe(new EOSIOStreamConsoleDebugger({prefix: `>>> ${client_socket.remoteAddress}:${client_socket.remotePort}`}));
         });
     }
+
+    destroy(){
+        this.target.end();
+        this.socket.end();
+    }
+
+    set_index(index: number){
+        this.index = index;
+    }
 }
 
 
@@ -73,13 +84,15 @@ class Peer {
 
 
 const peers: Peer[] = [];
+let total_peers: number = 0;
 const server = net.createServer(function(socket: net.Socket) {
     console.log(`Connection received from ${socket.remoteAddress}`);
 
     const peer = new Peer(socket);
+    peer.set_index(peers.length);
     peers.push(peer);
 
-    console.log(`Total peers : ${peers.length}`);
+    console.log(`Total peers : ${++total_peers}`);
 });
 
 server.listen(source.port, source.host);
