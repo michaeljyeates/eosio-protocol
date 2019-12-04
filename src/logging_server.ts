@@ -49,7 +49,7 @@ class Peer {
         client_socket
             .pipe(new EOSIOStreamTokenizer({}))
             .pipe(new EOSIOStreamDeserializer({}))
-            .pipe(new EOSIOStreamConsoleDebugger({prefix: `<<< ${client_socket.remoteAddress}`}));
+            .pipe(new EOSIOStreamConsoleDebugger({prefix: `<<< ${client_socket.remoteAddress}:${client_socket.remotePort}`}));
 
         this.target.connect(target.port, target.host, () => {
             console.log('Connected to nodeos target');
@@ -61,7 +61,7 @@ class Peer {
             this.target
                 .pipe(new EOSIOStreamTokenizer({}))
                 .pipe(new EOSIOStreamDeserializer({}))
-                .pipe(new EOSIOStreamConsoleDebugger({prefix: `>>> ${client_socket.remoteAddress}`}));
+                .pipe(new EOSIOStreamConsoleDebugger({prefix: `>>> ${client_socket.remoteAddress}:${client_socket.remotePort}`}));
         });
     }
 }
