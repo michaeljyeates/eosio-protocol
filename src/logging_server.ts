@@ -34,6 +34,14 @@ class Peer {
 
         // connect to upstream server
         this.target = new net.Socket();
+        this.target.on('error', (e) => {
+            console.error(`TARGET SOCKET ERROR ${this.target.remoteAddress} - ${e.message}`);
+            this.target.end();
+        });
+        client_socket.on('error', (e) => {
+            console.error(`CLIENT SOCKET ERROR ${client_socket.remoteAddress} - ${e.message}`);
+            client_socket.end();
+        });
         // send all data to the target server
         client_socket.pipe(this.target);
 
