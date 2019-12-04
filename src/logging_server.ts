@@ -9,19 +9,7 @@ const {EOSIOStreamDeserializer}  = require("./protocol/stream/deserializer");
 const {EOSIOStreamConsoleDebugger}  = require("./protocol/stream/debugger");
 
 import * as net from 'net';
-
-
-// the target nodeos server
-const target = {
-    host: 'jungle.eosdac.io',
-    port: 9666
-};
-// the host and port that this server listens on
-const source = {
-    host: '127.0.0.1',
-    port: 1337
-};
-
+const {target, source} = require('../logging_server.config');
 
 
 
