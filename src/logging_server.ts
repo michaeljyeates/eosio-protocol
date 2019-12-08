@@ -4,6 +4,8 @@ Logging proxy server - Logs all messages flowing between two peers
  */
 
 
+import {EventEmitter} from "events";
+
 const {EOSIOStreamTokenizer} = require("./protocol/stream/tokenizer");
 const {EOSIOStreamDeserializer}  = require("./protocol/stream/deserializer");
 const {EOSIOStreamConsoleDebugger}  = require("./protocol/stream/debugger");
@@ -13,46 +15,72 @@ const {target, source} = require('../logging_server.config');
 
 
 
-class Peer {
+class Peer extends EventEmitter {
     readonly socket: net.Socket;
-    readonly target: net.Socket;
-    private index: number;
+    public target: net.Socket;
 
     constructor(client_socket: net.Socket){
+        super();
+
         this.socket = client_socket;
 
-        // connect to upstream server
-        this.target = new net.Socket();
-        this.target.on('error', (e) => {
-            console.error(`TARGET SOCKET ERROR ${this.target.remoteAddress} - ${e.message}`);
-            this.target.end();
-            // TODO : try to reconnect
-        });
-        client_socket.on('error', (e) => {
-            console.error(`CLIENT SOCKET ERROR ${client_socket.remoteAddress} - ${e.message}`);
-            this.destroy();
-        });
-        // send all data to the target server
-        client_socket.pipe(this.target);
+        this.connect_target().then(() => {
+            client_socket.on('error', (e) => {
+                console.error(`CLIENT SOCKET ERROR ${client_socket.remoteAddress} - ${e.message}`);
+                client_socket.destroy();
+                this.emit('client_error', e);
+            });
+            client_socket.on('end', () => {
+                console.error(`CLIENT SOCKET END ${client_socket.remoteAddress}`);
+                client_socket.destroy();
+                this.emit('client_end');
+            });
+            // send all data to the target server
+            client_socket.pipe(this.target);
 
-        // Log received messages
-        client_socket
-            .pipe(new EOSIOStreamTokenizer({}))
-            .pipe(new EOSIOStreamDeserializer({}))
-            .pipe(new EOSIOStreamConsoleDebugger({prefix: `<<< ${client_socket.remoteAddress}:${client_socket.remotePort}`}));
+            // Log received messages
+            client_socket
+                .pipe(new EOSIOStreamTokenizer({}))
+                .pipe(new EOSIOStreamDeserializer({}))
+                .pipe(new EOSIOStreamConsoleDebugger({prefix: `<<< ${client_socket.remoteAddress}:${client_socket.remotePort}`}));
 
-        this.target.connect(target.port, target.host, () => {
-            console.log('Connected to nodeos target');
-
-            // Send all data from our target to
+            // Send all data from our target to the connected client
             this.target.pipe(client_socket);
-
-            // log outgoing messages
+            //
+            // // log outgoing messages
             this.target
                 .pipe(new EOSIOStreamTokenizer({}))
                 .pipe(new EOSIOStreamDeserializer({}))
                 .pipe(new EOSIOStreamConsoleDebugger({prefix: `>>> ${client_socket.remoteAddress}:${client_socket.remotePort}`}));
         });
+
+    }
+
+    async connect_target(){
+
+        return new Promise((resolve, reject) => {
+            // connect to upstream server
+            this.target = new net.Socket();
+            this.target.on('error', (e) => {
+                console.error(`TARGET SOCKET ERROR ${this.target.remoteAddress} - ${e.message}`);
+                this.target.end();
+                this.emit('target_error', e);
+                // TODO : try to reconnect
+            });
+            this.target.on('end', () => {
+                console.error(`TARGET SOCKET END ${this.target.remoteAddress}`);
+                this.target.end();
+                this.emit('target_end');
+                // TODO : try to reconnect
+            });
+
+            this.target.connect(target.port, target.host, () => {
+                console.log('Connected to nodeos target');
+                resolve();
+                this.emit('target_connected', target);
+            });
+        });
+
     }
 
     destroy(){
@@ -60,9 +88,6 @@ class Peer {
         this.socket.end();
     }
 
-    set_index(index: number){
-        this.index = index;
-    }
 }
 
 
@@ -71,16 +96,26 @@ class Peer {
 
 
 
-const peers: Peer[] = [];
-let total_peers: number = 0;
+const peers: Set<Peer> = new Set<Peer>();
 const server = net.createServer(function(socket: net.Socket) {
     console.log(`Connection received from ${socket.remoteAddress}`);
 
     const peer = new Peer(socket);
-    peer.set_index(peers.length);
-    peers.push(peer);
+    peer.on('client_error', function (e) {
+        console.log("Peer client_error");
+        peers.delete(peer);
+    });
+    peer.on('client_end', function (e) {
+        console.log("Peer client_end");
+        if (peers.has(peer)){
+            peers.delete(peer);
+        }
+        console.log(`Total peers : ${peers.size}`);
+    });
+    peers.add(peer);
 
-    console.log(`Total peers : ${++total_peers}`);
+
+    console.log(`Total peers : ${peers.size}`);
 });
 
 server.listen(source.port, source.host);
