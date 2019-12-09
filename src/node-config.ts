@@ -2,9 +2,10 @@ export module NodeConfig {
     export var jungle: any[] = [
         {
             // haproxy
-            bp_name: 'eosdacserval',
+            bp_name: 'evilproducer',
             name: 'eosDAC',
-            host: '127.0.0.1',
+            // host: '127.0.0.1',
+            host: 'jungle2.eosdac.io',
             port: 1337,
             api: 'https://jungle.eosdac.io'
         },

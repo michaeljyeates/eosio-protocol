@@ -5,6 +5,7 @@ import { EOSIOStreamConsoleDebugger } from "./protocol/stream/debugger";
 import { EOSIOP2PClientConnection } from './protocol/connection';
 import { GoAwayMessage, HandshakeMessage, SyncRequestMessage } from './protocol/messages';
 
+import * as fs  from 'fs';
 import { sleep }  from './includes/utils';
 
 import * as pron from './includes/pron';
@@ -174,7 +175,7 @@ class BlockTransmissionTestRunner extends TestRunner {
         const results = await this.wait_for_tests(num_blocks);
         p2p.disconnect();
 
-        this.log_results(results);
+        // this.log_results(results);
     }
 
 
@@ -273,19 +274,82 @@ class BlockTransmissionTestRunner extends TestRunner {
 
 }
 
+const write_results = async (results, headers, network) => {
+    const filename = `${network}.csv`;
+    let write_header = false;
+    if (!fs.existsSync(filename)){
+        write_header = true;
+    }
+    fs.open(filename, 'a+', async (err, fp) => {
+
+        const do_write = async (fp, data) => {
+            return new Promise((resolve, reject) => {
+                fs.write(fp, data, (err, bytes_written, buffer) => {
+                    if (err){
+                        reject(err);
+                    }
+                    else {
+                        resolve([bytes_written, buffer]);
+                    }
+                });
+            });
+        };
+
+        if (write_header){
+            await do_write(fp, headers.join(',') + '\n');
+        }
+        await do_write(fp, results.join(',') + '\n');
+        console.log(`Wrote results to ${filename}`);
+    });
+};
+
 
 const run_tests = async (nodes: any, network: string) => {
+    const all_results: Map<string, number> = new Map();
     for (let n=0;n<nodes[network].length;n++){
         const node = nodes[network][n];
         console.log(`Running tests for ${node.name} (${node.host}:${node.port})`);
 
         const runner = new BlockTransmissionTestRunner(node);
         await runner.run(debug);
+        const results: any = await runner.get_result_json();
+        let speed = parseFloat(results.speed);
+        if (isNaN(speed) || results.blocks_received < 5000){
+            speed = 0;
+        }
+        all_results.set(results.bp_name, speed);
     }
+
+    const res_array = [];
+    const headers = [
+        'evilproducer',
+        'eosdacserval',
+        'lioninjungle',
+        'ohtigertiger',
+        'alohaeostest',
+        'eosnationftw',
+        'ivote4eosusa',
+        'teamgreymass',
+        'greeneosiobp',
+        'eosphereiobp',
+        'junglesweden',
+        'eosbarcelona',
+        'atticlabjbpn'
+    ];
+    const d = new Date();
+    res_array.push(`${d.getFullYear()}-${d.getUTCMonth()-1}-${d.getUTCDate()}T${d.getUTCHours()}:${d.getUTCMinutes()}`);
+    headers.forEach((prod_name) => {
+        res_array.push(all_results.get(prod_name));
+    });
+
+    headers.unshift('Date');
+
+
+    await write_results(res_array, headers, network);
 };
 
-const network = 'jungle';
-const debug = false;
+const network = process.env.NETWORK || 'jungle';
+const debug = !!process.env.NETWORK;
 
 run_tests(NodeConfig, network);
 // setInterval(run_tests, 60*2*1000, [config, network]);
