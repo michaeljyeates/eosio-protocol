@@ -1,5 +1,14 @@
-export module NodeConfig {
-    export var jungle: any[] = [
+export default {
+    jungle: [
+        {
+            // haproxy
+            bp_name: 'evilproducer',
+            name: 'eosDAC',
+            // host: '127.0.0.1',
+            host: 'jungle2.eosdac.io',
+            port: 1337,
+            api: 'https://jungle.eosdac.io'
+        },
         {
             // haproxy
             bp_name: 'evilproducer',
@@ -94,15 +103,15 @@ export module NodeConfig {
             port: 9876,
             api: 'https://jungle.eosdac.io'
         },
-    ];
-    export var mainnet: any[] = [
+    ],
+    mainnet: [
         {
             bp_name: 'eosdacserver',
             name: 'eosDAC',
             host: 'eu.eosdac.io',
             port: 49876,
             api: 'https://api.eossweden.org'
-      },
+        },
         {
             bp_name: 'teamgreymass',
             name: 'Greymass',
@@ -117,31 +126,30 @@ export module NodeConfig {
             port: 9076,
             api: 'https://api.eossweden.org'
         },
-         {
+        {
             bp_name: 'eosriobrazil',
-             name: 'EOS Rio',
-             host: 'br.eosrio.io',
-             port: 9876,
-             api: 'https://api.eosrio.io'
-         },
-         {
+            name: 'EOS Rio',
+            host: 'br.eosrio.io',
+            port: 9876,
+            api: 'https://api.eosrio.io'
+        },
+        {
             bp_name: 'eosnationftw',
-             name: 'EOS Nation',
-             host: 'peer.eosn.io',
-             port: 9876,
-             api: 'https://api.eosn.io'
-         }
-    ];
-    export var kylin: any[] = [
+            name: 'EOS Nation',
+            host: 'peer.eosn.io',
+            port: 9876,
+            api: 'https://api.eosn.io'
+        }
+    ],
+    kylin: [
         {
             name: 'sweden kylin',
             host: 'kylin.eossweden.org',
             port: 59874,
             api: 'https://kylin.eossweden.org'
         }
-    ];
-
-    export var wax: any[] = [
+    ],
+    wax: [
         {
             "bp_name": "alohaeosprod",
             "name": "alohaeosprod",
@@ -331,7 +339,6 @@ export module NodeConfig {
             "port": "13975",
             "api": "https://wax.eosdac.io"
         }
-    ];
-
+    ]
 };
 

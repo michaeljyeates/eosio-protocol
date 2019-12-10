@@ -9,7 +9,7 @@ import * as fs  from 'fs';
 import { sleep }  from './includes/utils';
 
 import * as pron from './includes/pron';
-import { NodeConfig } from './node-config';
+import config from './node-config';
 import * as stream from 'stream';
 
 const fetch = require('node-fetch');
@@ -350,6 +350,8 @@ const run_tests = async (nodes: any, network: string) => {
 
 const network = process.env.NETWORK || 'jungle';
 const debug = !!process.env.NETWORK;
+const test_interval_ms = 60 * 60 * 3 * 1000;
 
-run_tests(NodeConfig, network);
-// setInterval(run_tests, 60*2*1000, [config, network]);
+
+run_tests(config, network);
+setInterval(() => run_tests(config, network), test_interval_ms);
