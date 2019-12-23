@@ -106,7 +106,7 @@ class BlockTransmissionTestRunner extends TestRunner {
     }
 
     log_results(results): void{
-        console.log(results);
+        console.log(JSON.stringify(results));
     }
 
     async run(debug = false): Promise<void>{
