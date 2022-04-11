@@ -26,7 +26,7 @@ class TestRunner {
     protected p2p: EOSIOP2PClientConnection;
     protected num_blocks: number;
 
-    constructor(node, num_blocks){
+    constructor(node, num_blocks, block_timeout){
         this.node = node;
         this.last_block_time = BigInt(0);
         this.block_count = 0;
@@ -34,7 +34,7 @@ class TestRunner {
         this.killed_reason = '';
         this.killed_detail = '';
         this.latencies = [];
-        this.block_timeout = 10000;
+        this.block_timeout = block_timeout ?? 10000;
         this.num_blocks = num_blocks;
 
         const p2p = new EOSIOP2PClientConnection({...this.node, ...{debug}});
@@ -77,8 +77,8 @@ class TestRunner {
 class BlockTransmissionTestRunner extends TestRunner {
     private kill_timer: NodeJS.Timeout;
 
-    constructor(node, num_blocks){
-        super(node, num_blocks);
+    constructor(node, num_blocks, block_timeout){
+        super(node, num_blocks, block_timeout);
     }
 
     async on_signed_block(msg): Promise<void> {
@@ -304,7 +304,7 @@ const write_results = async (results, headers, network) => {
 
 const run_command_tests = async (node) => {
     // console.log(`Running tests for ${node.host}:${node.port}`);
-    const runner = new BlockTransmissionTestRunner(node, node.blocks);
+    const runner = new BlockTransmissionTestRunner(node, node.blocks, node.block_timeout);
     await runner.run(debug);
 };
 
@@ -327,6 +327,11 @@ let argv = yargs
     .option('blocks', {
         alias: 'b',
         description: 'Number of blocks',
+        type: 'number',
+    })
+    .option('block_timeout', {
+        alias: 't',
+        description: 'Block Timeout (default: 10000)',
         type: 'number',
     })
     .option('debug', {
