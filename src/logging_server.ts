@@ -58,29 +58,25 @@ class Peer extends EventEmitter {
 
     async connect_target(){
 
-        return new Promise((resolve, reject) => {
-            // connect to upstream server
-            this.target = new net.Socket();
-            this.target.on('error', (e) => {
-                console.error(`TARGET SOCKET ERROR ${this.target.remoteAddress} - ${e.message}`);
-                this.target.end();
-                this.emit('target_error', e);
-                // TODO : try to reconnect
-            });
-            this.target.on('end', () => {
-                console.error(`TARGET SOCKET END ${this.target.remoteAddress}`);
-                this.target.end();
-                this.emit('target_end');
-                // TODO : try to reconnect
-            });
-
-            this.target.connect(target.port, target.host, () => {
-                console.log('Connected to nodeos target');
-                resolve();
-                this.emit('target_connected', target);
-            });
+        // connect to upstream server
+        this.target = new net.Socket();
+        this.target.on('error', (e) => {
+            console.error(`TARGET SOCKET ERROR ${this.target.remoteAddress} - ${e.message}`);
+            this.target.end();
+            this.emit('target_error', e);
+            // TODO : try to reconnect
+        });
+        this.target.on('end', () => {
+            console.error(`TARGET SOCKET END ${this.target.remoteAddress}`);
+            this.target.end();
+            this.emit('target_end');
+            // TODO : try to reconnect
         });
 
+        this.target.connect(target.port, target.host, () => {
+            console.log('Connected to nodeos target');
+            this.emit('target_connected', target);
+        });
     }
 
     destroy(){
